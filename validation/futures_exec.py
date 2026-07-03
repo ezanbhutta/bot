@@ -287,6 +287,20 @@ def verdict(per_event, spot_mat):
             continue
         (cov if not np.isnan(r["f1"]) else uncov).append(v)
 
+    # Pessimistic sensitivity (disclosed, not governing): re-deflate F1
+    # against the full 30-trial ledger even though the cell was fixed by the
+    # spot phase before any futures data was read. Over-harsh — it charges
+    # the discovery-phase multiplicity tax twice on the same sample — but a
+    # maximally suspicious reader deserves the number.
+    dsr_pessimistic = float("nan")
+    worst5 = []
+    if f1.get("n", 0) >= 2:
+        hurdle = stats.expected_max_sharpe_null_mc([f1["n"]] * 30)
+        dsr_pessimistic = stats.psr(f1["sr"], hurdle, f1["n"],
+                                    f1["skew"], f1["kurt"])
+        r = np.asarray([x["f1"] for x in per_event], dtype=np.float64)
+        worst5 = [float(x) for x in np.sort(r[~np.isnan(r)])[:5]]
+
     if f1["n"] < config.N_MIN_EVENTS:
         v, why = "INCONCLUSIVE", f"only {f1['n']} tradeable events (< {config.N_MIN_EVENTS})"
     elif f1.get("mean", 0) <= 0:
@@ -299,6 +313,7 @@ def verdict(per_event, spot_mat):
         v, why = "REAL EDGE", "positive net-of-funding expectancy, PSR and MinTRL cleared"
     return {
         "f1": f1, "f2": f2,
+        "dsr_pessimistic": dsr_pessimistic, "worst5": worst5,
         "funding_mean": float(fund1.mean()) if len(fund1) else float("nan"),
         "funding_negative_frac": float((fund1 < 0).mean()) if len(fund1) else float("nan"),
         "coverage": {

@@ -273,6 +273,15 @@ def futures_section(fx):
         f"shortable universe is not the measured universe",
         f"  PBO: not applicable (no variant selection — config was fixed by "
         f"the spot verdict before any futures data was read)",
+        f"  pessimistic sensitivity: re-deflating F1 against the full "
+        f"30-trial ledger (double-charges the discovery-phase multiplicity "
+        f"tax on the same sample) gives PSR={fx['dsr_pessimistic']:.3f} — "
+        f"below 0.95; the verdict rests on the pre-registered "
+        f"discovery->confirmation design (docs/DECISIONS.md D3)",
+        f"  squeeze tail (worst 5 events, % of stake): "
+        + "  ".join(f"{w*100:.0f}%" for w in fx["worst5"])
+        + " — losses are NOT capped at -100% in this model; sizing is "
+          "existential for any live use",
         f"  VERDICT (short side, futures): {fx['verdict']} — {fx['why']}",
     ]
     return "\n".join(lines)

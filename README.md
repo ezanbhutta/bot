@@ -78,7 +78,11 @@ tests/                      unit tests incl. lookahead-leak guards
 ## Current output
 
 `reports/verdict_report.txt` holds the latest full run (429 events,
-2019-2026): H-B = REAL EDGE (marginal) as a fade *signal*, with the report
-spelling out why that does NOT authorize capital (spot form is "do not buy
-listings"; the short side needs a separate futures validation with funding
-data). H-C and H-A are NOT TESTED yet, by design.
+2019-2026): H-B = REAL EDGE (marginal) as a fade *signal*; spot-actionable
+form is "do not buy listings". The pre-declared futures execution leg
+(docs/DECISIONS.md D3; `ingest-futures`) tests the short side where it can
+actually exist: on the 127 listings with a day-one perp, shorting at
+spot+1h for 14d nets +13.2%/event AFTER futures fees, adverse fills and
+funding (funding costs shorts ~5%/event on average) — REAL EDGE with
+marginal confidence and a violent squeeze tail (worst event -236% of
+stake). H-C and H-A are NOT TESTED yet, by design.
