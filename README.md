@@ -69,3 +69,16 @@ tests/                      unit tests incl. lookahead-leak guards
   never annualized.
 - **Defaults**: verdict logic can only emit REAL EDGE if all six stages pass;
   every ambiguity resolves to GHOST or INCONCLUSIVE.
+- **Frozen rulings**: methodological forks encountered during the build
+  (Stage 3 variance estimator, event-definition rules, purging) are recorded
+  in `docs/DECISIONS.md` and frozen before any further hypothesis runs.
+  Stage 3 prints BOTH the governing null-calibrated hurdle and the paper
+  plug-in variant, plus a dependence-free Bonferroni cross-check.
+
+## Current output
+
+`reports/verdict_report.txt` holds the latest full run (429 events,
+2019-2026): H-B = REAL EDGE (marginal) as a fade *signal*, with the report
+spelling out why that does NOT authorize capital (spot form is "do not buy
+listings"; the short side needs a separate futures validation with funding
+data). H-C and H-A are NOT TESTED yet, by design.

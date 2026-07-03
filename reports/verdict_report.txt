@@ -1,0 +1,85 @@
+DATA SUMMARY (survivorship-complete listing events, Binance SPOT)
+  qualifying events        : 429
+  date range (first trade) : 2019-09-06 .. 2026-06-12
+  with announcement_time   : 333 (78%)  [rest labeled first-kline-anchor only]
+  now delisted/dead tokens : 97 (23%)  [kept — survivorship rule]
+  kline rows stored        : 1468513
+  excluded candidates (nothing silently dropped):
+    - quote_pair_addition_not_listing: 101
+    - before_event_window: 68
+    - leveraged_token: 48
+    - stable_or_pegged: 24
+    - forward_window_incomplete: 11
+
+Hyp  S1 sanity  S2 walk-fwd  S3 DSR  S4 PBO  S5 friction  S6 MinTRL  VERDICT     
+---- ---------- ------------ ------- ------- ------------ ---------- ----------- 
+H-B  PASS       PASS         PASS    PASS    PASS         PASS       REAL EDGE   
+H-C  —          —            —       —       —            —          NOT TESTED  
+H-A  —          —            —       —       —            —          NOT TESTED  
+
+STAGE DETAIL — H-B
+  [PASS] S1 in-sample sanity: N=426; train cells with mean>0: 16/24; best train SR=0.209 (+1h|14d)
+  [PASS] S2 walk-forward: OOS SR=0.202 vs train SR=0.323 (n=329, 3/4 folds positive)
+  [PASS] S3 deflated Sharpe: DSR=0.986 vs null-calibrated hurdle SR*=0.130 over 28 trials (need >= 0.95); best cell +1h|14d SR=0.293; Bonferroni x28 p=0.0012 (dependence-free cross-check); paper plug-in variant: SR*=0.626 -> DSR=0.000 (disclosed, not governing — see docs/DECISIONS.md)
+  [PASS] S4 PBO (CSCV): PBO=0.052 over 924 CSCV splits (need <= 0.5; reference CSCV is unpurged, so overlapping 14d windows at block edges bias PBO slightly LOW — a pass near the threshold would not be trustworthy)
+  [PASS] S5 friction: net mean=14.70%/event vs gross 15.44% (friction eats 0.74 pp)
+  [PASS] S6 MinTRL: have n=413 events, need >= 73 for 95% confidence
+
+Confidence: MARGINAL result: DSR 0.986 is close to the 0.95 bar; walk-forward fold(s) [3] were flat/negative out-of-sample — the edge has soft regimes (see REGIME EXHIBIT)
+
+H-B claimed newly listed tokens systematically decline after listing, so fading/avoiding the listing has positive expectancy. Descriptively the dump is real: 42% of listings trade below their first-hour price 14 days later, 75% peak within the first 24h, and the median max drawdown inside 14 days is 66%. The tested rule — short at +1h|14d — survived walk-forward, deflation, PBO, friction and the sample-size gate. READ THE VERDICT NARROWLY. It validates the fade SIGNAL as measured on spot prices; it does NOT authorize deploying capital. (1) On SPOT the only actionable form is: do not buy listings; there is nothing to short. (2) Short execution lives on futures, and this run does NOT model funding/borrow: fresh listings often trade with deeply negative perp funding (shorts PAY, at extremes ~0.1-1% per 8h), which over a 14d hold could consume the entire measured edge — per HYPOTHESIS.md the short side requires a separate futures-market validation with funding data before any deployment. (3) A perp must EXIST at entry time; the shortable universe is a subset of these events. (4) The return profile is short-squeeze-shaped (skew -3.1): most events win, rare events lose multiples — position sizing is the difference between this edge and ruin. Why it may persist: the fade side is capacity-limited and uncrowded — retail flow is structurally on the buy side at listings, and the borrow/funding cost that protects it from arbitrage is exactly the cost that must be validated next.
+
+FULL H-B GRID — net SHORT-side return per event (positive = fade edge)
+  cell            n     mean   median      SR   win%
+  open|1h       421-1128.28% -126.30%  -0.341   8.1%
+  open|4h       421-1196.82% -121.23%  -0.283   9.5%
+  open|24h      421-1122.36% -100.64%  -0.321  10.9%
+  open|3d       421-1058.22%  -78.40%  -0.335  16.9%
+  open|7d       421 -948.97%  -79.50%  -0.364  20.7%
+  open|14d      421 -932.12%  -64.81%  -0.341  22.6%
+  +1h|1h        413   -0.33%    0.38%  -0.034  53.0%
+  +1h|4h        413    0.93%    2.41%   0.061  60.0%
+  +1h|24h       413    4.74%    7.37%   0.192  68.0%
+  +1h|3d        413    8.13%   14.56%   0.170  73.6%
+  +1h|7d        413   11.08%   20.00%   0.239  74.6%
+  +1h|14d       413   14.70%   25.29%   0.293  76.3%
+  +4h|1h        393   -0.46%    0.18%  -0.063  51.9%
+  +4h|4h        393    1.11%    1.87%   0.094  59.5%
+  +4h|24h       393    4.30%    7.02%   0.190  70.2%
+  +4h|3d        393    7.19%   13.41%   0.171  75.6%
+  +4h|7d        393   10.46%   18.79%   0.236  73.8%
+  +4h|14d       393   13.32%   24.88%   0.261  72.3%
+  +24h|1h       381    0.43%    0.39%   0.095  55.6%
+  +24h|4h       381    1.37%    1.98%   0.141  66.7%
+  +24h|24h      381    3.59%    6.85%   0.160  72.7%
+  +24h|3d       381    4.89%    9.39%   0.135  72.7%
+  +24h|7d       381    8.60%   16.82%   0.204  73.5%
+  +24h|14d      381   11.57%   21.12%   0.244  74.0%
+
+REGIME EXHIBIT — net short +1h|14d by listing year
+  year     n     mean   median   win%
+  2019    11   21.51%   25.06%    91%
+  2020    61   18.36%   36.82%    79%
+  2021    95   14.49%   19.19%    74%
+  2022    33   11.78%   34.82%    82%
+  2023    32    4.12%   13.95%    69%
+  2024    62    3.03%   14.48%    66%
+  2025    97   24.20%   29.90%    82%
+  2026    22   12.94%   23.27%    77%
+  walk-forward folds (selected cell -> unseen next block):
+    fold 1: +24h|7d   train SR=0.417 -> test mean=7.50% SR=0.193 (n=81)
+    fold 2: +24h|24h  train SR=0.366 -> test mean=1.64% SR=0.079 (n=83)
+    fold 3: +24h|24h  train SR=0.254 -> test mean=-1.49% SR=-0.045 (n=85)
+    fold 4: +1h|14d   train SR=0.255 -> test mean=21.16% SR=0.531 (n=80)
+
+REVERSION EXHIBIT — pre-declared long-side post-dump entries (net LONG return; counted in DSR trials; NOT part of the verdict)
+  config                n     mean   median   win%
+  rev_24h_dd40_7d     152  -16.90%  -23.22%  18.4%
+  rev_24h_dd60_7d      63  -20.72%  -26.70%  19.0%
+  rev_72h_dd40_7d     206  -10.43%  -10.07%  26.7%
+  rev_72h_dd60_7d      88  -15.43%  -14.42%  22.7%
+
+H-C: NOT TESTED — pre-listing drift needs off-Binance price history (tokens do not trade on Binance before listing); tested separately once that data layer exists
+
+H-A: NOT TESTED — requires a control group of never-listed tokens (ACCEPTANCE.md hard block 8); tested last per HYPOTHESIS.md
+
