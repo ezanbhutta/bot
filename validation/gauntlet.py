@@ -220,6 +220,12 @@ def stage3_deflated_sharpe(mat, rev):
     dsr_plugin, sr_star_plugin, n_trials = stats.deflated_sharpe(
         sr_hat, trial_srs, n, skew, kurt
     )
+    # Dependence-free cross-check: Bonferroni over ALL trials on the
+    # non-normality-adjusted single-test p-value (valid under arbitrary
+    # trial correlation; if this is small, no correlation structure can
+    # rescue the "it was selection luck" story).
+    p_single = 1.0 - stats.psr(sr_hat, 0.0, n, skew, kurt)
+    p_bonferroni = min(1.0, n_trials * p_single)
     passed = (not math.isnan(dsr)) and dsr >= config.DSR_CONFIDENCE
     return {
         "name": "S3 deflated Sharpe",
@@ -227,13 +233,15 @@ def stage3_deflated_sharpe(mat, rev):
         "sr": sr_hat, "skew": skew, "kurt": kurt, "n": n,
         "sr_star": sr_star, "n_trials": n_trials, "dsr": dsr,
         "sr_star_plugin": sr_star_plugin, "dsr_plugin": dsr_plugin,
+        "p_bonferroni": p_bonferroni,
         "pass": bool(passed),
         "key_stat": (
             f"DSR={dsr:.3f} vs null-calibrated hurdle SR*={sr_star:.3f} "
             f"over {n_trials} trials (need >= {config.DSR_CONFIDENCE}); "
-            f"best cell {names[j]} SR={sr_hat:.3f}; paper plug-in variant: "
-            f"SR*={sr_star_plugin:.3f} -> DSR={dsr_plugin:.3f} (disclosed, "
-            f"not governing: trial family has heterogeneous true SRs by design)"
+            f"best cell {names[j]} SR={sr_hat:.3f}; Bonferroni x{n_trials} "
+            f"p={p_bonferroni:.2g} (dependence-free cross-check); paper "
+            f"plug-in variant: SR*={sr_star_plugin:.3f} -> DSR={dsr_plugin:.3f} "
+            f"(disclosed, not governing — see docs/DECISIONS.md)"
         ),
     }
 
@@ -248,8 +256,12 @@ def stage4_pbo(mat, rev):
         "name": "S4 PBO (CSCV)",
         "pbo": pbo, "n_splits": n_splits, "n_variants": M.shape[1],
         "pass": bool(passed),
-        "key_stat": f"PBO={pbo:.3f} over {n_splits} CSCV splits "
-                    f"(need <= {config.PBO_MAX})",
+        "key_stat": (
+            f"PBO={pbo:.3f} over {n_splits} CSCV splits (need <= "
+            f"{config.PBO_MAX}; reference CSCV is unpurged, so overlapping "
+            f"14d windows at block edges bias PBO slightly LOW — a pass "
+            f"near the threshold would not be trustworthy)"
+        ),
     }
 
 
@@ -324,7 +336,9 @@ def run_hb(conn, events):
 
     s1 = stage1_sanity(mat)
     if s1.get("insufficient"):
-        empty = {"name": "-", "pass": False, "key_stat": "not reached"}
+        # Unreached stages carry pass=None ("—" in the table): they did not
+        # run, and the confidence note must not count them as failures.
+        empty = {"name": "-", "pass": None, "key_stat": "not reached"}
         v, why = "INCONCLUSIVE", "sample below N_min at Stage 1"
         return {"hypothesis": "H-B", "stages": [s1] + [empty] * 5,
                 "verdict": v, "why": why, "matrices": mat, "reversion": rev,

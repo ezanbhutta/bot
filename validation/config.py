@@ -36,8 +36,10 @@ DB_PATH = "data/validation.db"
 EVENT_START_UTC = "2019-09-01T00:00:00Z"
 # An event needs a complete +14d forward window; events younger than this
 # margin are excluded (counted and reported, never silently dropped).
+# Margin exceeds the 15.5d kline window so no in-progress candle can enter
+# the raw store.
 FORWARD_WINDOW_DAYS = 14
-FORWARD_MARGIN_DAYS = 15
+FORWARD_MARGIN_DAYS = 16
 
 # Quote asset used to define "the" listing pair for an event.
 PRIMARY_QUOTE = "USDT"
@@ -79,7 +81,9 @@ QUOTE_ADDITION_TOLERANCE_HOURS = 12
 # multi-day horizons)
 # ---------------------------------------------------------------------------
 KLINE_1M_HOURS = 49          # 1m bars from T0 .. T0+49h (covers +24h entry -> +24h horizon exit)
-KLINE_1H_DAYS = 15           # 1h bars from T0 .. T0+15d
+KLINE_1H_DAYS = 15.5         # 1h bars past T0+15d: the +24h|14d exit lands
+                             # exactly AT +15d and needs a bar there, not
+                             # a spurious force-exit one hour early
 
 # ---------------------------------------------------------------------------
 # H-B test grid (pre-declared; the FULL grid is always reported — ACCEPTANCE.md)
@@ -117,7 +121,12 @@ REVERSION_CONFIGS = [
 # ---------------------------------------------------------------------------
 TAKER_FEE = 0.001            # Binance spot taker, VIP0, no BNB discount (conservative)
 HALF_SPREAD_MIN = 0.0005     # 5 bps floor on half-spread + impact, 1m bars
-HALF_SPREAD_RANGE_FRAC = 0.25  # + 25% of the fill bar's (high-low)/mid
+HALF_SPREAD_RANGE_FRAC = 0.25  # + 25% of the fill bar's (high-low)/open
+# Cap: listing first-minutes can have (high-low)/open > 4, which would push
+# the adverse shift past 100% and flip fill-price signs (a corrupted fill,
+# not a conservative one). A fill 50% worse than the decision price is the
+# model's ceiling of adversity.
+HALF_SPREAD_CAP = 0.50
 HALF_SPREAD_LATE = 0.0010    # 10 bps when only 1h bars exist (3d+ exits) — conservative
 MIN_BAR_QUOTE_VOLUME = 1000.0  # USDT; below this the bar is untradeable -> no fill
 

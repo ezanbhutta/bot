@@ -212,8 +212,8 @@ def ingest_event_klines(conn, progress=print, workers=10):
     for ev in evs:
         t0 = ev["first_trade_time"]
         want = [
-            ("1m", t0, t0 + config.KLINE_1M_HOURS * 3_600_000),
-            ("1h", t0, t0 + config.KLINE_1H_DAYS * 86_400_000),
+            ("1m", t0, t0 + int(config.KLINE_1M_HOURS * 3_600_000)),
+            ("1h", t0, t0 + int(config.KLINE_1H_DAYS * 86_400_000)),
         ]
         for interval, lo, hi in want:
             got = have.get((ev["symbol"], interval))

@@ -126,7 +126,8 @@ def fetch_klines_rest(sess, symbol, interval, start_ms, end_ms):
         batch = r.json()
         if not batch:
             break
-        out.extend(batch)
+        now_ms = int(time.time() * 1000)
+        out.extend(k for k in batch if int(k[6]) <= now_ms)  # no in-progress bar
         last_open = batch[-1][0]
         if len(batch) < 1000:
             break

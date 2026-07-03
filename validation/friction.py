@@ -36,11 +36,13 @@ def half_spread(bar, res: str) -> float:
         return float("nan")
     rng = (h - l) / o
     if res == "1m":
-        return max(config.HALF_SPREAD_MIN, config.HALF_SPREAD_RANGE_FRAC * rng)
-    return max(
-        config.HALF_SPREAD_LATE,
-        config.HALF_SPREAD_RANGE_FRAC * rng / math.sqrt(60.0),
-    )
+        hs = max(config.HALF_SPREAD_MIN, config.HALF_SPREAD_RANGE_FRAC * rng)
+    else:
+        hs = max(
+            config.HALF_SPREAD_LATE,
+            config.HALF_SPREAD_RANGE_FRAC * rng / math.sqrt(60.0),
+        )
+    return min(hs, config.HALF_SPREAD_CAP)
 
 
 def tradeable(bar) -> bool:
@@ -67,6 +69,8 @@ def net_short_return(entry_bar, entry_res, exit_bar, exit_res) -> float:
     f = config.TAKER_FEE
     s = sell_price(entry_bar, entry_res) * (1.0 - f)   # short-sale proceeds
     b = buy_price(exit_bar, exit_res) * (1.0 + f)      # buy-back cost
+    if s <= 0 or b <= 0:
+        return float("nan")  # corrupted fill must never masquerade as P&L
     return 1.0 - b / s
 
 
