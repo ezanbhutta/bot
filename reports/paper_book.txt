@@ -1,0 +1,17 @@
+FORWARD PAPER BOOK (D4; rule F1 frozen; accounting only — forward results never change the rule)
+  forward window starts 2026-06-13T00:00:00Z; 11 forward listings so far
+  symbol          listed (UTC)      perp            status        price leg  funding    total spot fade
+  REUSDT          2026-06-18 14:00  REUSDT          OPEN                  -        -        -    -20.1%
+  AMDBUSDT        2026-06-23 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  EWYBUSDT        2026-06-23 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  INTCBUSDT       2026-06-23 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  MSTRBUSDT       2026-06-23 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  LITEBUSDT       2026-06-30 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  METABUSDT       2026-06-30 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  MSFTBUSDT       2026-06-30 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  PLTRBUSDT       2026-06-30 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  QQQBUSDT        2026-06-30 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  GRAMUSDT        2026-07-02 08:00  -               DETECTED              -        -        -         -
+
+  no settled forward trades yet (positions need 14d + archive lag to close and settle)
+  signal monitor (spot fade, ALL forward events incl. untradeable): n=1 mean=-20.12% win=0%

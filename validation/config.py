@@ -64,6 +64,16 @@ STABLE_OR_PEGGED_BASES = {
     "LUNC", "USTC", "BNSOL",
 }
 
+# Tokenized equities/ETFs (Backed xStocks etc.): pegged to an off-chain
+# asset and arbitraged to NAV — no crypto listing-pump microstructure, same
+# logic as stablecoin exclusion. Batch-listed at US market hours. Extend
+# this set when new stock tokens appear (docs/DECISIONS.md D2).
+TOKENIZED_EQUITY_BASES = {
+    "AMDB", "EWYB", "INTCB", "MSTRB", "LITEB", "METAB", "MSFTB", "PLTRB",
+    "QQQB", "TSLAB", "AAPLB", "NVDAB", "GOOGLB", "AMZNB", "SPYB", "COINB",
+    "HOODB", "CRCLB",
+}
+
 # Announcement window: an announcement matches an event if it falls in
 # [first_trade - 30d, first_trade + 12h].
 ANNOUNCE_MATCH_BEFORE_MS = 30 * 24 * 3600 * 1000
@@ -138,6 +148,11 @@ FUT_TAKER_FEE = 0.0005       # USDS-M futures taker, VIP0
 FUT_HOLD_MS = 336 * H        # 14d hold, fixed by the validated spot cell
 FUT_ENTRY_OFFSET_MS = 1 * H  # spot_t0 + 1h, fixed by the validated spot cell
 FUT_F2_MAX_DELAY_MS = 7 * 24 * H  # F2: perp must arrive within 7d of listing
+
+# --- Forward paper-test (docs/DECISIONS.md D4) ---
+# Frozen: first UTC day after the last backtest event. Listings at/after
+# this instant are forward events permanently.
+FORWARD_TEST_START_UTC = "2026-06-13T00:00:00Z"
 
 N_MIN_EVENTS = 30            # Stage 1 / hard block 1
 TRAIN_FRACTION = 0.70        # Stage 1 in-sample portion

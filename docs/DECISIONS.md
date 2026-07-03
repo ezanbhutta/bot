@@ -94,6 +94,30 @@ Coverage bias must be reported: perp-covered events vs all events compared
 on their SPOT fade returns, so a "perps only exist for big listings"
 selection effect is visible instead of silent.
 
+## D4 — Forward paper-test protocol (2026-07-03)
+
+Declared before the tracker's first run.
+
+- **Forward window freeze:** every listing whose first trade is at/after
+  2026-06-13 00:00 UTC (the day after the last backtest event) is a FORWARD
+  event, permanently — even after future re-ingests are old enough to
+  admit it to the backtest sample, its paper-book row stays forward.
+- **Rule under test:** F1 exactly as validated — short the perp at
+  spot_t0 + 1h if a tradeable perp bar exists there, hold 336h, same
+  friction model, funding accounted from the archive when the monthly file
+  lands. No F2, no variations. UNTRADEABLE events are recorded, not
+  skipped, and their SPOT fade return is tracked so the signal itself is
+  monitored on the full universe.
+- **One-way mirror:** forward results are accounting only. They must never
+  motivate a change to the rule, the thresholds, or the friction model. If
+  forward performance dies, the honest output is "the edge decayed," not a
+  new rule.
+- **Verdict refresh:** the forward book earns a standalone verdict only
+  when it reaches its own MinTRL; before that it reports "consistent /
+  inconsistent with backtest" descriptively (forward mean inside the
+  backtest's 95% band for that n, win-rate comparison), clearly labeled as
+  underpowered.
+
 ## D2 — Event-definition rulings (2026-07-03)
 
 - USDT pair anchors the event; if the base traded on ANY other Binance pair
@@ -102,5 +126,9 @@ selection effect is visible instead of silent.
   direction of effect on the verdict was unknown at ruling time.
 - Redenominations/pegged/fiat bases (LUNC, USTC, BNSOL, AUD, UST, VAI, ...)
   are not listings.
+- Tokenized equities/ETFs (xStocks: AMDB, MSFTB, QQQB, ...) are pegged
+  instruments, excluded like stablecoins. Ruled 2026-07-03 when the forward
+  tracker's first sweep surfaced them; at ruling time all nine were
+  UNTRADEABLE (no perp), so the ruling could not move any measured number.
 - Walk-forward folds are purged: train events whose 16d forward window
   overlaps the test fold are dropped from train.

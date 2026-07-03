@@ -16,7 +16,7 @@ import argparse
 import sys
 
 from validation import (announcements, config, events, futures_exec, gauntlet,
-                        report, storage)
+                        paper_tracker, report, storage)
 
 
 def cmd_ingest(conn):
@@ -43,6 +43,17 @@ def cmd_ingest_futures(conn):
     print(f"[futures] ingesting perp klines + funding for {len(evs)} events "
           f"(docs/DECISIONS.md D3)")
     futures_exec.ingest(conn, evs)
+    return 0
+
+
+def cmd_track(conn):
+    print("[track] forward paper-test refresh (docs/DECISIONS.md D4)")
+    paper_tracker.refresh(conn)
+    out = paper_tracker.report(conn)
+    print()
+    print(out)
+    with open("data/paper_book.txt", "w") as fh:
+        fh.write(out + "\n")
     return 0
 
 
@@ -90,7 +101,8 @@ def cmd_validate(conn):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("command",
-                    choices=["ingest", "ingest-futures", "validate", "all"])
+                    choices=["ingest", "ingest-futures", "validate", "track",
+                             "all"])
     ap.add_argument("--db", default=config.DB_PATH)
     args = ap.parse_args()
     conn = storage.connect(args.db)
@@ -99,6 +111,8 @@ def main():
             cmd_ingest(conn)
         if args.command in ("ingest-futures", "all"):
             cmd_ingest_futures(conn)
+        if args.command == "track":
+            return cmd_track(conn)
         if args.command in ("validate", "all"):
             return cmd_validate(conn) or 0
         return 0

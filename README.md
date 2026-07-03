@@ -14,9 +14,12 @@ the test battery in `docs/VALIDATION_GAUNTLET.md`; the honesty rules in
 
 ```bash
 pip install -r requirements.txt
-python listing_validator.py ingest     # ~10 min: announcements + events + klines -> data/validation.db
-python listing_validator.py validate   # gauntlet + verdict table (also saved to data/verdict_report.txt)
-python -m pytest tests/                # stats-machinery + anti-leakage tests
+python listing_validator.py ingest          # ~10 min: announcements + events + klines -> data/validation.db
+python listing_validator.py ingest-futures  # perp klines + funding rates (D3 short-side leg)
+python listing_validator.py validate        # gauntlet + verdict table (also saved to data/verdict_report.txt)
+python listing_validator.py track           # forward paper-test: run any time (daily/weekly), it
+                                            # catches up statelessly from public archives (D4)
+python -m pytest tests/                     # stats-machinery + anti-leakage tests
 ```
 
 ## Data sources (all public, read-only, keyless)

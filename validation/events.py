@@ -142,6 +142,8 @@ def build_event_calendar(conn, progress=print):
             ev["exclude_reason"] = "no_kline_data"
         elif base in config.STABLE_OR_PEGGED_BASES:
             ev["exclude_reason"] = "stable_or_pegged"
+        elif base in config.TOKENIZED_EQUITY_BASES:
+            ev["exclude_reason"] = "tokenized_equity"
         elif _is_leveraged(base, all_bases):
             ev["exclude_reason"] = "leveraged_token"
         elif ft < start_ms:

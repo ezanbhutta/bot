@@ -97,6 +97,24 @@ CREATE TABLE IF NOT EXISTS funding_rates (
     rate         REAL NOT NULL,
     PRIMARY KEY (symbol, funding_time)
 );
+
+CREATE TABLE IF NOT EXISTS paper_trades (
+    symbol           TEXT PRIMARY KEY,   -- spot USDT pair
+    base_asset       TEXT NOT NULL,
+    first_trade_time INTEGER NOT NULL,
+    perp_symbol      TEXT,
+    status           TEXT NOT NULL,      -- DETECTED/UNTRADEABLE/OPEN/CLOSED_PRICE/SETTLED
+    entry_time       INTEGER,
+    exit_time        INTEGER,
+    fill_return      REAL,               -- price leg net of fees+spread
+    funding_return   REAL,
+    funding_complete INTEGER DEFAULT 0,
+    total_return     REAL,
+    spot_return      REAL,               -- spot +1h|14d fade (signal monitor)
+    note             TEXT,
+    created_at       INTEGER NOT NULL,
+    updated_at       INTEGER NOT NULL
+);
 """
 
 
