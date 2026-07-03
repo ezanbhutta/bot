@@ -152,10 +152,12 @@ def fetch_klines_archive(sess, symbol, interval, start_ms, end_ms):
             f"{symbol}/{interval}/{symbol}-{interval}-{ds}.zip"
         )
         try:
-            r = sess.get(url, timeout=60)
-        except requests.RequestException:
-            day += timedelta(days=1)
-            continue
+            r = _get(sess, url, timeout=60)
+        except requests.HTTPError as e:
+            if e.response is not None and e.response.status_code == 404:
+                day += timedelta(days=1)   # legit absence (before/after life)
+                continue
+            raise  # transient failure must surface, not become a silent gap
         if r.status_code == 200:
             with zipfile.ZipFile(io.BytesIO(r.content)) as zf:
                 name = zf.namelist()[0]
@@ -177,11 +179,15 @@ def fetch_klines_archive(sess, symbol, interval, start_ms, end_ms):
 
 
 def fetch_klines(sess, symbol, interval, start_ms, end_ms):
-    """REST, falling back to archive zips if REST returns nothing/partial.
+    """REST, falling back to archive zips if REST returns nothing or refuses
+    the symbol outright (long-delisted symbols can 4xx on the mirror).
 
     Returns (klines, source) with klines in Binance list format.
     """
-    rows = fetch_klines_rest(sess, symbol, interval, start_ms, end_ms)
+    try:
+        rows = fetch_klines_rest(sess, symbol, interval, start_ms, end_ms)
+    except requests.RequestException:
+        rows = []
     if rows:
         return rows, "rest"
     rows = fetch_klines_archive(sess, symbol, interval, start_ms, end_ms)
@@ -229,19 +235,26 @@ def first_kline_ms(sess, symbol):
 
 
 def first_kline_many(symbols, workers=12):
-    """Parallel first-kline lookup: {symbol: ms or None}."""
-    results = {}
+    """Parallel first-kline lookup.
+
+    Returns ({symbol: ms or None}, {symbol: error_str}). A symbol in the
+    error dict had a FAILED lookup (network etc.) — that is not the same as
+    "never traded" and callers must not treat it as such.
+    """
+    results, errors = {}, {}
 
     def job(sym):
         s = _session()
         try:
-            return sym, first_kline_ms(s, sym)
-        except Exception:
-            return sym, None
+            return sym, first_kline_ms(s, sym), None
+        except Exception as e:  # noqa: BLE001 — surfaced via errors dict
+            return sym, None, f"{type(e).__name__}: {e}"
 
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futs = [ex.submit(job, s) for s in symbols]
         for f in as_completed(futs):
-            sym, ms = f.result()
+            sym, ms, err = f.result()
             results[sym] = ms
-    return results
+            if err:
+                errors[sym] = err
+    return results, errors

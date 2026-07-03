@@ -37,12 +37,18 @@ def _cell_table(matrix, names, mask=None):
 def stage1_sanity(mat):
     M, names = mat["net_short"], mat["config_names"]
     n_events = int(np.sum(~np.all(np.isnan(M), axis=1)))
+    n_no_data = len(mat.get("no_data_symbols", []))
     res = {
         "name": "S1 in-sample sanity",
         "n_events": n_events,
+        "n_no_data": n_no_data,
         "pass": None,
         "insufficient": n_events < config.N_MIN_EVENTS,
     }
+    if n_no_data:
+        # Qualifying events with zero klines are a DATA failure, not a
+        # market outcome — they must be visible, never silently dropped.
+        res["no_data_symbols"] = mat["no_data_symbols"]
     if res["insufficient"]:
         res["key_stat"] = f"N={n_events} < N_min={config.N_MIN_EVENTS}"
         res["pass"] = False
@@ -64,9 +70,12 @@ def stage1_sanity(mat):
             "n_cells_valid": len(valid),
             "pass": True,  # gate only fails on sample size; merits die in S2-5
             "key_stat": (
-                f"N={n_events}; train cells with mean>0: "
-                f"{n_pos}/{len(valid)}; best train SR="
-                f"{best[3]:.3f} ({best[0]})" if best else f"N={n_events}; no valid cells"
+                (f"N={n_events}"
+                 + (f" (+{n_no_data} events MISSING KLINES — data gap!)"
+                    if n_no_data else "")
+                 + f"; train cells with mean>0: {n_pos}/{len(valid)}; "
+                   f"best train SR={best[3]:.3f} ({best[0]})")
+                if best else f"N={n_events}; no valid cells"
             ),
         }
     )
@@ -78,12 +87,18 @@ def stage2_walk_forward(mat):
     evaluate the SAME cell on the untouched next block."""
     M, names = mat["net_short"], mat["config_names"]
     N = len(M)
+    t0s = np.array([ev["first_trade_time"] for ev in mat["events"]])
+    purge_ms = config.WF_PURGE_DAYS * 86_400_000
     k = config.WF_N_FOLDS
     edges = np.linspace(0, N, k + 1, dtype=int)
     folds = []
     pooled_test, pooled_train_sr = [], []
     for f in range(1, k):
+        test_start_ms = t0s[edges[f]]
+        # Purged train: drop events whose forward window is still open at
+        # the test fold's start (their returns embed test-period prices).
         tr = np.arange(0, edges[f])
+        tr = tr[t0s[tr] < test_start_ms - purge_ms]
         te = np.arange(edges[f], edges[f + 1])
         cand = []
         for j in range(M.shape[1]):
@@ -165,6 +180,22 @@ def _best_grid_cell(mat):
 
 
 def stage3_deflated_sharpe(mat, rev):
+    """Deflated Sharpe with the hurdle computed under the theorem's own
+    null: all trials have true SR = 0, per-trial estimation variance from
+    each trial's actual n, independence assumed (conservative for our
+    positively-correlated grid).
+
+    The paper's plug-in estimator (V = cross-sectional variance of OBSERVED
+    trial SRs) is also computed and reported, but it is only consistent for
+    homogeneous same-idea trials. Our pre-declared grid intentionally
+    contains control cells with strongly NEGATIVE true SR (shorting the
+    listing-minute open), which inflate the plug-in variance with true-SR
+    dispersion the null does not have; mechanically, adding more honest bad
+    controls to the report would push ANY strategy to GHOST under the
+    plug-in, which punishes full reporting rather than selection luck.
+    Adjudicated by an outcome-blind methodology panel (3 independent
+    reviews): the null-calibrated hurdle governs; the plug-in is disclosed.
+    """
     best = _best_grid_cell(mat)
     if best is None:
         return {"name": "S3 deflated Sharpe", "pass": False,
@@ -174,24 +205,35 @@ def stage3_deflated_sharpe(mat, rev):
     # Trials = EVERY variant this project evaluated: 24 grid cells + the
     # pre-declared reversion exhibit configs. Understating this count is the
     # classic way DSR gets gamed, so both matrices contribute.
-    trial_srs = [stats.sharpe(mat["net_short"][:, k])
-                 for k in range(mat["net_short"].shape[1])]
+    trial_cols = [mat["net_short"][:, k]
+                  for k in range(mat["net_short"].shape[1])]
     if rev is not None and rev["net_long"].size:
-        trial_srs += [stats.sharpe(rev["net_long"][:, k])
-                      for k in range(rev["net_long"].shape[1])]
+        trial_cols += [rev["net_long"][:, k]
+                       for k in range(rev["net_long"].shape[1])]
+    trial_srs = [stats.sharpe(c) for c in trial_cols]
+    trial_ns = [int(np.sum(~np.isnan(c))) for c in trial_cols]
     n, _, _, skew, kurt = stats.moments(col)
-    dsr, sr_star, n_trials = stats.deflated_sharpe(sr_hat, trial_srs, n, skew, kurt)
+    # Governing hurdle: null-calibrated expected max (per-trial variances).
+    sr_star = stats.expected_max_sharpe_null_mc(trial_ns)
+    dsr = stats.psr(sr_hat, sr_star, n, skew, kurt)
+    # Disclosed alternative: the paper's plug-in estimator.
+    dsr_plugin, sr_star_plugin, n_trials = stats.deflated_sharpe(
+        sr_hat, trial_srs, n, skew, kurt
+    )
     passed = (not math.isnan(dsr)) and dsr >= config.DSR_CONFIDENCE
     return {
         "name": "S3 deflated Sharpe",
         "best_cell": names[j],
         "sr": sr_hat, "skew": skew, "kurt": kurt, "n": n,
         "sr_star": sr_star, "n_trials": n_trials, "dsr": dsr,
+        "sr_star_plugin": sr_star_plugin, "dsr_plugin": dsr_plugin,
         "pass": bool(passed),
         "key_stat": (
-            f"DSR={dsr:.3f} (need >= {config.DSR_CONFIDENCE}); best cell "
-            f"{names[j]} SR={sr_hat:.3f}, hurdle SR*={sr_star:.3f} over "
-            f"{n_trials} trials"
+            f"DSR={dsr:.3f} vs null-calibrated hurdle SR*={sr_star:.3f} "
+            f"over {n_trials} trials (need >= {config.DSR_CONFIDENCE}); "
+            f"best cell {names[j]} SR={sr_hat:.3f}; paper plug-in variant: "
+            f"SR*={sr_star_plugin:.3f} -> DSR={dsr_plugin:.3f} (disclosed, "
+            f"not governing: trial family has heterogeneous true SRs by design)"
         ),
     }
 

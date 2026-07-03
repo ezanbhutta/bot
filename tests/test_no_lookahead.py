@@ -126,6 +126,39 @@ def test_delisting_truncation_keeps_event():
     assert m["truncated"][0, j], "forced exit not marked as truncated"
 
 
+def test_data_gap_exits_at_next_bar_not_series_end():
+    """A trading halt/data gap at the intended exit must exit on the first
+    bar AFTER the gap, not jump to the end of the series (which would price
+    a 1h-horizon trade at +15d)."""
+    conn = _mk_conn()
+    m1 = []
+    for i in range(49 * 60):
+        t = T0 + i * MIN
+        h = (t - T0) / HOUR
+        if 1.0 <= h < 3.0:
+            continue  # two-hour gap covering the +1h..+3h exits
+        p = 1.0 if h < 3.0 else 5.0  # price after the gap differs from before
+        m1.append(_kline(t, p, p * 1.01, p * 0.99, p, MIN))
+    h1 = []
+    for i in range(15 * 24):
+        t = T0 + i * HOUR
+        h = (t - T0) / HOUR
+        if 1.0 <= h < 3.0:
+            continue
+        p = 1.0 if h < 3.0 else 5.0
+        h1.append(_kline(t, p, p * 1.02, p * 0.98, p, HOUR))
+    storage.insert_klines(conn, "GGGUSDT", "1m", m1, "test")
+    storage.insert_klines(conn, "GGGUSDT", "1h", h1, "test")
+    conn.commit()
+    m = returns.build_matrices(conn, [_event("GGGUSDT")])
+    j = m["config_names"].index("open|1h")
+    # exit lands in the gap -> must fill at ~+3h price (5.0), and NOT be
+    # marked as a delisting truncation
+    assert not m["truncated"][0, j]
+    r = m["net_short"][0, j]
+    assert r < -2.0, f"gap exit should buy back at ~5x, got short return {r}"
+
+
 def test_untradeable_bar_produces_no_fill():
     def flat(t):
         return 1.0
@@ -144,12 +177,16 @@ def test_untradeable_bar_produces_no_fill():
     )
 
 
-def test_short_fill_is_worse_than_mid():
-    """Friction must always work AGAINST the trader."""
+def test_fills_adverse_to_decision_time_price():
+    """Fills anchor on the bar OPEN (the only decision-time-observable
+    price) and friction must always work AGAINST the trader."""
     bar = (1.0, 1.5, 0.9, 1.2, 1e6)  # violent listing-minute bar
-    mid = (1.0 + 1.5 + 0.9 + 1.2) / 4
-    assert friction.sell_price(bar, "1m") < mid
-    assert friction.buy_price(bar, "1m") > mid
+    assert friction.sell_price(bar, "1m") < bar[0]
+    assert friction.buy_price(bar, "1m") > bar[0]
+    # The violent range must WIDEN the adverse shift, not shrink it.
+    calm = (1.0, 1.001, 0.999, 1.0, 1e6)
+    assert friction.sell_price(bar, "1m") < friction.sell_price(calm, "1m")
+    assert friction.buy_price(bar, "1m") > friction.buy_price(calm, "1m")
     # Round-trip short at identical bars must LOSE money (spread+fees).
     r = friction.net_short_return(bar, "1m", bar, "1m")
     assert r < 0

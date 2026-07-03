@@ -46,6 +46,25 @@ def test_expected_max_sharpe_monotone_in_trials():
     assert 0 < e2 < e28 < e500
 
 
+def test_null_mc_hurdle_behavior():
+    # More trials -> higher null max hurdle.
+    few = stats.expected_max_sharpe_null_mc([400] * 5, n_draws=50_000)
+    many = stats.expected_max_sharpe_null_mc([400] * 28, n_draws=50_000)
+    assert 0 < few < many
+    # Noisier trials (smaller n) -> higher hurdle.
+    noisy = stats.expected_max_sharpe_null_mc([400] * 24 + [60] * 4,
+                                              n_draws=50_000)
+    assert noisy > many
+    # Deterministic across calls (seeded).
+    a = stats.expected_max_sharpe_null_mc([400] * 10)
+    b = stats.expected_max_sharpe_null_mc([400] * 10)
+    assert a == b
+    # Sanity: hurdle for 28 trials of n=400 must sit near the closed-form
+    # common-variance value.
+    closed = stats.expected_max_sharpe(28, 1.0 / 399)
+    assert abs(many - closed) < 0.02
+
+
 def test_dsr_below_psr_when_many_trials():
     rng = np.random.default_rng(7)
     trials = rng.normal(0.0, 0.2, 28)  # SRs of 28 noise variants

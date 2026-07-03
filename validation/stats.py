@@ -79,16 +79,37 @@ def expected_max_sharpe(n_trials, var_sr) -> float:
     )
 
 
+def expected_max_sharpe_null_mc(trial_ns, n_draws=200_000, seed=20260703):
+    """E[max SR-hat] under the DSR's own null — every trial has TRUE SR = 0 —
+    with each trial's estimation variance 1/(n_i - 1) taken from its actual
+    observation count (Mertens variance at SR=0). Monte Carlo because the
+    closed-form expected-max assumes a COMMON variance, which heterogeneous
+    per-trial n violates. Independence across trials is assumed, which
+    OVERSTATES effective multiplicity for our positively-correlated grid —
+    i.e. this hurdle is conservative. Deterministic seed for reproducibility.
+    """
+    ns = np.asarray([n for n in trial_ns if n and n > 1], dtype=np.float64)
+    if len(ns) == 0:
+        return 0.0
+    sds = np.sqrt(1.0 / (ns - 1.0))
+    rng = np.random.default_rng(seed)
+    draws = rng.standard_normal((n_draws, len(sds))) * sds
+    return float(draws.max(axis=1).mean())
+
+
 def deflated_sharpe(sr_hat, trial_sharpes, n, skew, kurt):
     """DSR = PSR evaluated against the expected-max-SR benchmark.
 
     trial_sharpes: the observed SR of EVERY variant tried (full grid +
     exhibits), used both for the trial count and for V[SR].
+    N counts every trial CONDUCTED — a variant whose SR is undefined (too
+    few observations) was still a trial; dropping it would lower the
+    deflation hurdle, which is the anti-conservative direction.
     Returns (dsr_probability, sr_star_benchmark, n_trials).
     """
+    n_trials = len(list(trial_sharpes))
     trials = _clean(trial_sharpes)
-    n_trials = len(trials)
-    var_sr = float(trials.var(ddof=1)) if n_trials > 1 else 0.0
+    var_sr = float(trials.var(ddof=1)) if len(trials) > 1 else 0.0
     sr_star = expected_max_sharpe(n_trials, var_sr)
     return psr(sr_hat, sr_star, n, skew, kurt), sr_star, n_trials
 

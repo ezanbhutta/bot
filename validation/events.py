@@ -66,7 +66,7 @@ def build_event_calendar(conn, progress=print):
         )
     )
     todo = [s for s in usdt_pairs if s not in known]
-    fk = market_data.first_kline_many(todo, workers=12)
+    fk, fk_errors = market_data.first_kline_many(todo, workers=12)
     fk.update(known)
     for sym, ms in fk.items():
         if sym not in usdt_pairs:
@@ -108,7 +108,7 @@ def build_event_calendar(conn, progress=print):
         )
     )
     todo2 = [s for s in set(check_syms) if s not in known2]
-    fk2 = market_data.first_kline_many(todo2, workers=12)
+    fk2, fk2_errors = market_data.first_kline_many(todo2, workers=12)
     fk2.update(known2)
     for sym in set(check_syms):
         b, q = parsed[sym]
@@ -119,7 +119,7 @@ def build_event_calendar(conn, progress=print):
         )
     conn.commit()
 
-    tol_ms = config.QUOTE_ADDITION_TOLERANCE_DAYS * 86_400_000
+    tol_ms = config.QUOTE_ADDITION_TOLERANCE_HOURS * 3_600_000
     n_included = 0
     counts = {}
 
@@ -135,7 +135,10 @@ def build_event_calendar(conn, progress=print):
             if (sym in ei and ei[sym][2] == "TRADING") else "DELISTED",
             "included": 0,
         }
-        if ft is None:
+        if ft is None and sym in fk_errors:
+            # Lookup FAILED (network etc.) — not the same as "never traded".
+            ev["exclude_reason"] = "first_kline_lookup_error"
+        elif ft is None:
             ev["exclude_reason"] = "no_kline_data"
         elif base in config.STABLE_OR_PEGGED_BASES:
             ev["exclude_reason"] = "stable_or_pegged"
@@ -146,13 +149,15 @@ def build_event_calendar(conn, progress=print):
         elif ft > cutoff_ms:
             ev["exclude_reason"] = "forward_window_incomplete"
         else:
-            earlier = [
-                fk2.get(s)
-                for s in other_pairs_by_base.get(base, [])
-                if fk2.get(s)
-            ]
+            others = other_pairs_by_base.get(base, [])
+            earlier = [fk2.get(s) for s in others if fk2.get(s)]
+            unresolved = [s for s in others if s in fk2_errors]
             if earlier and min(earlier) < ft - tol_ms:
                 ev["exclude_reason"] = "quote_pair_addition_not_listing"
+            elif unresolved:
+                # Can't prove this USDT pair is the base's first market;
+                # admitting it could pollute the sample with non-listings.
+                ev["exclude_reason"] = "quote_addition_check_incomplete"
             else:
                 # Genuine new listing event. Attach announcement if any.
                 cands = [

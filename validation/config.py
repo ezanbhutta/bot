@@ -51,11 +51,15 @@ QUOTE_ASSETS = [
     "PAX", "BTC", "ETH", "BNB", "XRP", "TRX", "DOGE", "DOT", "SOL",
 ]
 
-# Base assets that are never "new listing" events for our purposes.
+# Base assets that are never "new listing" events for our purposes:
+# stables/pegged/wrapped/fiat (no listing-pump dynamics) and redenominations
+# of already-trading tokens (LUNC/USTC are renamed LUNA/UST, BNSOL is staked
+# SOL — their first USDT kline is not a listing event).
 STABLE_OR_PEGGED_BASES = {
     "USDT", "USDC", "TUSD", "BUSD", "FDUSD", "DAI", "PAX", "USDP", "USDS",
     "SUSD", "EUR", "GBP", "AEUR", "TRY", "BRL", "WBTC", "WBETH", "BETH",
-    "BTTC", "USD1", "USDE", "XUSD", "FDUSDT",
+    "BTTC", "USD1", "USDE", "XUSD", "FDUSDT", "AUD", "UST", "VAI",
+    "LUNC", "USTC", "BNSOL",
 }
 
 # Announcement window: an announcement matches an event if it falls in
@@ -65,8 +69,10 @@ ANNOUNCE_MATCH_AFTER_MS = 12 * 3600 * 1000
 
 # If a base asset traded on Binance (any pair) more than this long before its
 # USDT pair opened, the USDT-pair start is a quote-pair addition, not a new
-# listing event.
-QUOTE_ADDITION_TOLERANCE_DAYS = 7
+# listing event. Tight on purpose: H-B's entry grid starts at the FIRST
+# CANDLE, which is meaningless if the token already traded on a BTC/BNB pair
+# the day before (2019-2021 listings often staggered quote pairs).
+QUOTE_ADDITION_TOLERANCE_HOURS = 12
 
 # ---------------------------------------------------------------------------
 # Kline windows (DATA_PIPELINE.md: 1m for tight event windows, 1h for the
@@ -121,6 +127,10 @@ MIN_BAR_QUOTE_VOLUME = 1000.0  # USDT; below this the bar is untradeable -> no f
 N_MIN_EVENTS = 30            # Stage 1 / hard block 1
 TRAIN_FRACTION = 0.70        # Stage 1 in-sample portion
 WF_N_FOLDS = 5               # Stage 2 chronological folds
+# Purge: a train event whose forward window (entry +24h + horizon 14d) is
+# still open when the test fold begins leaks test-period prices into cell
+# selection (Lopez de Prado purged CV). Such events are dropped from train.
+WF_PURGE_DAYS = 16
 WF_MIN_TEST_TRAIN_SR_RATIO = 0.25  # test SR must retain at least this share of train SR
 DSR_CONFIDENCE = 0.95        # Stage 3: deflated Sharpe must clear this probability
 PBO_MAX = 0.50               # Stage 4 / hard block 4

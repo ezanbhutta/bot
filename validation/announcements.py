@@ -33,7 +33,8 @@ RE_NOT_SPOT = re.compile(
     re.I,
 )
 
-RE_TICKER = re.compile(r"\(([A-Z0-9]{2,15})\)")
+# Mixed case allowed ("XAUt") — base assets are uppercased for matching.
+RE_TICKER = re.compile(r"\(([A-Z0-9][A-Za-z0-9]{1,14})\)")
 
 
 def classify(title: str):
@@ -60,7 +61,7 @@ def classify(title: str):
 
 
 def extract_tickers(title: str):
-    return [t for t in RE_TICKER.findall(title) if not t.isdigit()]
+    return [t.upper() for t in RE_TICKER.findall(title) if not t.isdigit()]
 
 
 def fetch_all(conn, session: requests.Session = None, max_pages: int = 200):
@@ -98,7 +99,11 @@ def fetch_all(conn, session: requests.Session = None, max_pages: int = 200):
         total_stored += storage.insert_announcements(
             conn, articles, config.CMS_CATALOG_ID
         )
-        if page * config.CMS_PAGE_SIZE >= (total_expected or 0):
+        # A missing 'total' must NOT truncate the crawl to one page; fall
+        # back to paging until a short page.
+        if total_expected is not None and page * config.CMS_PAGE_SIZE >= total_expected:
+            break
+        if total_expected is None and len(articles) < config.CMS_PAGE_SIZE:
             break
         page += 1
         time.sleep(0.35)  # polite pacing on a public CMS endpoint

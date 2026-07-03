@@ -27,12 +27,12 @@ def _load_klines(conn, symbol, interval):
     return np.asarray(rows, dtype=np.float64)
 
 
-def _bar_at_or_after(arr, ts, tol_ms):
-    """First bar with open_time >= ts (within tolerance). Returns row or None."""
+def _bar_at_or_after(arr, ts, tol_ms=None):
+    """First bar with open_time >= ts (within tolerance, if given)."""
     idx = np.searchsorted(arr[:, 0], ts, side="left")
     if idx >= len(arr):
         return None
-    if arr[idx, 0] - ts > tol_ms:
+    if tol_ms is not None and arr[idx, 0] - ts > tol_ms:
         return None
     return arr[idx]
 
@@ -51,14 +51,48 @@ def _fill_bar(m1, h1, ts, t0):
     return None, None
 
 
-def _last_bar(h1, m1):
-    if h1 is not None and len(h1):
-        row = h1[-1]
-    elif m1 is not None and len(m1):
-        row = m1[-1]
-    else:
-        return None, None
-    return (row[1], row[2], row[3], row[4], row[5]), "1h"
+def _exit_bar(m1, h1, t_exit, t0):
+    """Exit fill: first TRADEABLE bar at/after t_exit at the natural
+    resolution; on a data gap or dust-volume stretch (halt, thin trading)
+    walk forward to the first later tradeable bar of any resolution rather
+    than pretending the symbol died or covering in nonexistent liquidity.
+    Only if no tradeable bar exists at/after t_exit is the position
+    force-closed on the LAST tradeable bar before it (genuine end of
+    trading). Returns (bar, res, truncated) or (None, None, None)."""
+    bar, res = _fill_bar(m1, h1, t_exit, t0)
+    if bar is not None and friction.tradeable(bar):
+        return bar, res, False
+    best = None
+    for arr, r in ((m1, "1m"), (h1, "1h")):
+        if arr is None:
+            continue
+        idx = int(np.searchsorted(arr[:, 0], t_exit, side="left"))
+        while idx < len(arr):
+            row = arr[idx]
+            b = (row[1], row[2], row[3], row[4], row[5])
+            if friction.tradeable(b):
+                if best is None or row[0] < best[0]:
+                    best = (row[0], b, r)
+                break
+            idx += 1
+    if best is not None:
+        return best[1], best[2], False
+    # nothing tradeable at/after t_exit: symbol stopped trading -> forced
+    # exit on the last tradeable bar we have.
+    lasts = []
+    for arr, r in ((m1, "1m"), (h1, "1h")):
+        if arr is None:
+            continue
+        for i in range(len(arr) - 1, -1, -1):
+            row = arr[i]
+            b = (row[1], row[2], row[3], row[4], row[5])
+            if friction.tradeable(b):
+                lasts.append((row[0], b, r))
+                break
+    if not lasts:
+        return None, None, None
+    _, b, r = max(lasts, key=lambda c: c[0])
+    return b, r, True
 
 
 def grid_config_names():
@@ -96,15 +130,11 @@ def build_matrices(conn, events):
                     j += 1
                     continue
                 t_exit = t_entry + hz
-                x_bar, x_res = _fill_bar(m1, h1, t_exit, t0)
+                x_bar, x_res, trunc = _exit_bar(m1, h1, t_exit, t0)
                 if x_bar is None:
-                    # symbol stopped trading before the horizon: force-exit
-                    # on the last bar we have (delisting truncation).
-                    x_bar, x_res = _last_bar(h1, m1)
-                    if x_bar is None:
-                        j += 1
-                        continue
-                    row_tr[j] = True
+                    j += 1
+                    continue
+                row_tr[j] = bool(trunc)
                 row_ns[j] = friction.net_short_return(e_bar, e_res, x_bar, x_res)
                 row_gl[j] = friction.gross_long_return(e_bar, x_bar)
                 j += 1
@@ -160,11 +190,9 @@ def build_reversion_exhibit(conn, events):
             drawdown = 1.0 - last_close / run_high
             if drawdown < dd_min:
                 continue  # trigger not met -> no trade (NaN, not zero)
-            x_bar, x_res = _fill_bar(m1, h1, t_entry + hold, t0)
+            x_bar, x_res, _trunc = _exit_bar(m1, h1, t_entry + hold, t0)
             if x_bar is None:
-                x_bar, x_res = _last_bar(h1, m1)
-                if x_bar is None:
-                    continue
+                continue
             out[i] = friction.net_long_return(e_bar, e_res, x_bar, x_res)
         kept.append(ev)
         rows.append(out)
