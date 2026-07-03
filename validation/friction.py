@@ -58,15 +58,17 @@ def sell_price(bar, res: str) -> float:
     return bar[0] * (1.0 - half_spread(bar, res))
 
 
-def net_long_return(entry_bar, entry_res, exit_bar, exit_res) -> float:
-    f = config.TAKER_FEE
+def net_long_return(entry_bar, entry_res, exit_bar, exit_res,
+                    fee: float = None) -> float:
+    f = config.TAKER_FEE if fee is None else fee
     cost = buy_price(entry_bar, entry_res) * (1.0 + f)
     proceeds = sell_price(exit_bar, exit_res) * (1.0 - f)
     return proceeds / cost - 1.0
 
 
-def net_short_return(entry_bar, entry_res, exit_bar, exit_res) -> float:
-    f = config.TAKER_FEE
+def net_short_return(entry_bar, entry_res, exit_bar, exit_res,
+                     fee: float = None) -> float:
+    f = config.TAKER_FEE if fee is None else fee
     s = sell_price(entry_bar, entry_res) * (1.0 - f)   # short-sale proceeds
     b = buy_price(exit_bar, exit_res) * (1.0 + f)      # buy-back cost
     if s <= 0 or b <= 0:

@@ -133,6 +133,12 @@ MIN_BAR_QUOTE_VOLUME = 1000.0  # USDT; below this the bar is untradeable -> no f
 # ---------------------------------------------------------------------------
 # Gauntlet thresholds (ACCEPTANCE.md hard blocks)
 # ---------------------------------------------------------------------------
+# --- H-B futures execution validation (docs/DECISIONS.md D3) ---
+FUT_TAKER_FEE = 0.0005       # USDS-M futures taker, VIP0
+FUT_HOLD_MS = 336 * H        # 14d hold, fixed by the validated spot cell
+FUT_ENTRY_OFFSET_MS = 1 * H  # spot_t0 + 1h, fixed by the validated spot cell
+FUT_F2_MAX_DELAY_MS = 7 * 24 * H  # F2: perp must arrive within 7d of listing
+
 N_MIN_EVENTS = 30            # Stage 1 / hard block 1
 TRAIN_FRACTION = 0.70        # Stage 1 in-sample portion
 WF_N_FOLDS = 5               # Stage 2 chronological folds

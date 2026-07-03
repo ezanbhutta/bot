@@ -55,6 +55,45 @@ role: selection-eligible vs control) in config BEFORE computing results.
 Controls are fully reported and count toward N, but are never selectable
 and never enter any variance plug-in.
 
+## D3 — H-B short-side FUTURES execution validation: pre-declaration (2026-07-03)
+
+Declared BEFORE any futures data was downloaded or any result computed.
+
+**Question.** The spot-price REAL EDGE for the fade signal (+1h entry, 14d
+hold) ignores what shorting actually costs. Does the edge survive on the
+venue where a short can exist — USDⓈ-M perpetuals — after (a) perp
+availability, (b) futures taker fees + adverse fills on perp bars,
+(c) FUNDING transfers over the full holding period?
+
+**Exactly TWO configs, both fully reported, both added to the trial ledger
+(N: 28 -> 30 for all future DSR deflation):**
+- **F1 (primary — the validated cell executed literally):** short the perp
+  at spot_t0 + 1h; if no tradeable perp bar exists there, the event is
+  UNTRADEABLE (reported, not dropped); hold 336h; exit on the first
+  tradeable perp bar at/after entry + 336h (delisted perp -> forced exit at
+  last bar, truncated flag).
+- **F2 (exhibit — availability-adjusted):** entry = max(spot_t0 + 1h, first
+  perp bar) if that is within spot_t0 + 7d, else untradeable; hold 336h.
+
+**Fixed parameters:** futures taker fee 5 bps per side; the same
+range-scaled adverse-fill model as spot (open basis, capped half-spread) on
+the perp's own 1m bars; funding return for a short = +sum(r_i * P_i/P_entry)
+over funding timestamps inside the hold (positive funding pays shorts,
+negative charges them), P_i marked from the spot 1h path (perp tracks spot
+to bps; documented approximation). Delisted-perp forced exits use the last
+bar, not the settlement print (approximation, disclosed).
+
+**Verdict rule (fixed now):** H-B-short(futures) inherits the H-B verdict
+machinery where selection is absent: sample gate n >= 30 tradeable events;
+expectancy must be positive net of funding; PSR >= 0.95 vs 0 with the
+non-normality correction; MinTRL satisfied; walk-forward fold means
+reported (no re-selection — the cell was fixed in advance); PBO not
+applicable (no variant selection — stated, not skipped silently). Any
+failure -> the short side is NOT validated (spot verdict unaffected).
+Coverage bias must be reported: perp-covered events vs all events compared
+on their SPOT fade returns, so a "perps only exist for big listings"
+selection effect is visible instead of silent.
+
 ## D2 — Event-definition rulings (2026-07-03)
 
 - USDT pair anchors the event; if the base traded on ANY other Binance pair

@@ -15,7 +15,8 @@ Usage:
 import argparse
 import sys
 
-from validation import announcements, config, events, gauntlet, report, storage
+from validation import (announcements, config, events, futures_exec, gauntlet,
+                        report, storage)
 
 
 def cmd_ingest(conn):
@@ -34,6 +35,17 @@ def cmd_ingest(conn):
     print(report.data_summary(conn))
 
 
+def cmd_ingest_futures(conn):
+    evs = events.load_events(conn)
+    if not evs:
+        print("run `ingest` first", file=sys.stderr)
+        return 1
+    print(f"[futures] ingesting perp klines + funding for {len(evs)} events "
+          f"(docs/DECISIONS.md D3)")
+    futures_exec.ingest(conn, evs)
+    return 0
+
+
 def cmd_validate(conn):
     evs = events.load_events(conn)
     if not evs:
@@ -44,6 +56,13 @@ def cmd_validate(conn):
     print(f"[validate] H-B (fade the listing) on {len(evs)} events "
           f"(tested FIRST, in isolation — HYPOTHESIS.md order)")
     hb = gauntlet.run_hb(conn, evs)
+
+    fx = None
+    n_meta = conn.execute("SELECT COUNT(*) FROM perp_meta").fetchone()[0]
+    if n_meta:
+        print("[validate] H-B short-side futures execution (D3)")
+        per_event = futures_exec.run(conn, evs)
+        fx = futures_exec.verdict(per_event, hb["matrices"])
 
     results = [
         hb,
@@ -59,7 +78,7 @@ def cmd_validate(conn):
             "(ACCEPTANCE.md hard block 8); tested last per HYPOTHESIS.md",
         ),
     ]
-    out = report.full_report(conn, results)
+    out = report.full_report(conn, results, futures_result=fx)
     print()
     print(out)
     with open("data/verdict_report.txt", "w") as fh:
@@ -70,13 +89,16 @@ def cmd_validate(conn):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("command", choices=["ingest", "validate", "all"])
+    ap.add_argument("command",
+                    choices=["ingest", "ingest-futures", "validate", "all"])
     ap.add_argument("--db", default=config.DB_PATH)
     args = ap.parse_args()
     conn = storage.connect(args.db)
     try:
         if args.command in ("ingest", "all"):
             cmd_ingest(conn)
+        if args.command in ("ingest-futures", "all"):
+            cmd_ingest_futures(conn)
         if args.command in ("validate", "all"):
             return cmd_validate(conn) or 0
         return 0

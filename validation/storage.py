@@ -68,6 +68,35 @@ CREATE TABLE IF NOT EXISTS ingest_log (
     step      TEXT NOT NULL,
     detail    TEXT
 );
+
+CREATE TABLE IF NOT EXISTS perp_meta (
+    spot_symbol TEXT PRIMARY KEY,
+    perp_symbol TEXT,                 -- NULL = no perp ever existed
+    first_date  TEXT,                 -- first daily-1m archive date
+    last_date   TEXT,
+    fetched_at  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS futures_klines (
+    symbol       TEXT NOT NULL,       -- perp symbol
+    interval     TEXT NOT NULL,
+    open_time    INTEGER NOT NULL,
+    open REAL NOT NULL, high REAL NOT NULL, low REAL NOT NULL,
+    close REAL NOT NULL, volume REAL NOT NULL,
+    close_time   INTEGER NOT NULL,
+    quote_volume REAL NOT NULL,
+    n_trades     INTEGER NOT NULL,
+    taker_buy_base REAL NOT NULL, taker_buy_quote REAL NOT NULL,
+    source       TEXT NOT NULL,
+    PRIMARY KEY (symbol, interval, open_time)
+);
+
+CREATE TABLE IF NOT EXISTS funding_rates (
+    symbol       TEXT NOT NULL,
+    funding_time INTEGER NOT NULL,
+    rate         REAL NOT NULL,
+    PRIMARY KEY (symbol, funding_time)
+);
 """
 
 
@@ -128,6 +157,11 @@ def upsert_symbol(conn, symbol, base, quote, status, in_ei, in_archive,
 
 
 def insert_klines(conn, symbol, interval, klines, source):
+    return insert_klines_table(conn, "klines", symbol, interval, klines, source)
+
+
+def insert_klines_table(conn, table, symbol, interval, klines, source):
+    assert table in ("klines", "futures_klines")
     rows = [
         (
             symbol, interval, int(k[0]), float(k[1]), float(k[2]), float(k[3]),
@@ -137,7 +171,7 @@ def insert_klines(conn, symbol, interval, klines, source):
         for k in klines
     ]
     conn.executemany(
-        "INSERT OR IGNORE INTO klines VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        f"INSERT OR IGNORE INTO {table} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         rows,
     )
     return len(rows)

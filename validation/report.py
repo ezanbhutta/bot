@@ -244,15 +244,52 @@ def plain_english(result):
     return base + action
 
 
+def futures_section(fx):
+    """H-B short-side futures execution (docs/DECISIONS.md D3)."""
+    f1, f2, cov = fx["f1"], fx["f2"], fx["coverage"]
+
+    def fmt(b, label):
+        if b.get("n", 0) < 2:
+            return f"  {label}: n={b.get('n', 0)} — not computable"
+        return (
+            f"  {label}: n={b['n']}  mean={b['mean']*100:+.2f}%/event  "
+            f"median={b['median']*100:+.2f}%  win={b['win']*100:.0f}%  "
+            f"SR={b['sr']:.3f}  PSR={b['psr']:.4f}  MinTRL={b['mtrl']:.0f}\n"
+            f"      chronological quarter-means: "
+            + "  ".join(f"{m*100:+.1f}%" for m in b["fold_means"])
+        )
+
+    lines = [
+        "H-B SHORT-SIDE FUTURES EXECUTION (pre-declared D3; funding included)",
+        fmt(f1, "F1 short perp at spot_t0+1h, hold 14d (primary)"),
+        fmt(f2, "F2 entry at perp launch if within 7d (exhibit)"),
+        f"  funding contribution (F1): mean {fx['funding_mean']*100:+.2f}% "
+        f"per event; funding NET-NEGATIVE for the short in "
+        f"{fx['funding_negative_frac']*100:.0f}% of events",
+        f"  coverage bias check: perp-tradeable events' SPOT fade mean "
+        f"{cov['covered_spot_mean']*100:+.2f}% (n={cov['covered_n']}) vs "
+        f"untradeable {cov['uncovered_spot_mean']*100:+.2f}% "
+        f"(n={cov['uncovered_n']}) — if these differ materially, the "
+        f"shortable universe is not the measured universe",
+        f"  PBO: not applicable (no variant selection — config was fixed by "
+        f"the spot verdict before any futures data was read)",
+        f"  VERDICT (short side, futures): {fx['verdict']} — {fx['why']}",
+    ]
+    return "\n".join(lines)
+
+
 def not_tested(hyp, reason):
     return {"hypothesis": hyp, "verdict": f"NOT TESTED", "not_tested": True,
             "reason": reason}
 
 
-def full_report(conn, results):
+def full_report(conn, results, futures_result=None):
     parts = [data_summary(conn), ""]
     parts.append(verdict_table(results))
     parts.append("")
+    if futures_result is not None:
+        parts.append(futures_section(futures_result))
+        parts.append("")
     for r in results:
         if r.get("not_tested"):
             parts.append(f"{r['hypothesis']}: NOT TESTED — {r['reason']}")
