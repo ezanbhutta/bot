@@ -15,8 +15,8 @@ Usage:
 import argparse
 import sys
 
-from validation import (announcements, config, events, futures_exec, gauntlet,
-                        paper_tracker, report, storage)
+from validation import (announcements, config, dashboard, events, futures_exec,
+                        gauntlet, paper_tracker, report, storage)
 
 
 def cmd_ingest(conn):
@@ -58,6 +58,13 @@ def cmd_track(conn):
     print(out)
     with open("data/paper_book.txt", "w") as fh:
         fh.write(out + "\n")
+    return 0
+
+
+def cmd_dashboard(conn):
+    print("[dashboard] rendering from DB ...")
+    path = dashboard.generate(conn)
+    print(f"[dashboard] written to {path} (+ reports/dashboard.html)")
     return 0
 
 
@@ -106,7 +113,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("command",
                     choices=["ingest", "ingest-futures", "validate", "track",
-                             "all"])
+                             "dashboard", "all"])
     ap.add_argument("--db", default=config.DB_PATH)
     args = ap.parse_args()
     conn = storage.connect(args.db)
@@ -116,7 +123,11 @@ def main():
         if args.command in ("ingest-futures", "all"):
             cmd_ingest_futures(conn)
         if args.command == "track":
-            return cmd_track(conn)
+            rc = cmd_track(conn)
+            cmd_dashboard(conn)   # keep the dashboard in step with the book
+            return rc
+        if args.command == "dashboard":
+            return cmd_dashboard(conn)
         if args.command in ("validate", "all"):
             return cmd_validate(conn) or 0
         return 0

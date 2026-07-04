@@ -1,0 +1,275 @@
+<title>Listing Validator — verdicts &amp; forward book</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --bg:#FAFAF7; --panel:#FFFFFF; --line:#E4E2DB; --ink:#20242A;
+  --ink2:#5C6470; --ink3:#8B909A; --pos:#0E7E9E; --neg:#C2562B;
+  --pos-tint:#0E7E9E; --neg-tint:#C2562B;
+  --pass:#2E7D45; --pass-bg:#E5F0E8; --fail:#B03A2E; --fail-bg:#F5E6E3;
+  --wait:#5C6470; --wait-bg:#ECEBE6; --accent:#0E7E9E;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#15181B; --panel:#1C2024; --line:#2C3138; --ink:#E6E4DF;
+  --ink2:#9BA1AA; --ink3:#6E747E; --pos:#2E93B5; --neg:#D5713B;
+  --pos-tint:#2E93B5; --neg-tint:#D5713B;
+  --pass:#4C9A63; --pass-bg:#1F2E24; --fail:#C4574A; --fail-bg:#33221F;
+  --wait:#9BA1AA; --wait-bg:#24282D; --accent:#2E93B5;
+}}
+:root[data-theme="dark"]{
+  --bg:#15181B; --panel:#1C2024; --line:#2C3138; --ink:#E6E4DF;
+  --ink2:#9BA1AA; --ink3:#6E747E; --pos:#2E93B5; --neg:#D5713B;
+  --pos-tint:#2E93B5; --neg-tint:#D5713B;
+  --pass:#4C9A63; --pass-bg:#1F2E24; --fail:#C4574A; --fail-bg:#33221F;
+  --wait:#9BA1AA; --wait-bg:#24282D; --accent:#2E93B5;
+}
+:root[data-theme="light"]{
+  --bg:#FAFAF7; --panel:#FFFFFF; --line:#E4E2DB; --ink:#20242A;
+  --ink2:#5C6470; --ink3:#8B909A; --pos:#0E7E9E; --neg:#C2562B;
+  --pos-tint:#0E7E9E; --neg-tint:#C2562B;
+  --pass:#2E7D45; --pass-bg:#E5F0E8; --fail:#B03A2E; --fail-bg:#F5E6E3;
+  --wait:#5C6470; --wait-bg:#ECEBE6; --accent:#0E7E9E;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.55 system-ui,"Segoe UI",Roboto,sans-serif;}
+.mono{font-family:ui-monospace,"SF Mono","Cascadia Code",Consolas,Menlo,monospace;
+  font-variant-numeric:tabular-nums;}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 20px 80px;}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 16px;
+  border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:26px;}
+header h1{font-size:21px;margin:0;letter-spacing:.01em}
+header .sub{color:var(--ink2);font-size:13px}
+header .stamp{margin-left:auto;color:var(--ink3);font-size:12px}
+.eyebrow{font-family:ui-monospace,Consolas,monospace;font-size:11px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--accent);
+  margin:34px 0 10px;}
+section p.note{color:var(--ink2);font-size:13.5px;max-width:72ch;margin:8px 0 0}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:6px;
+  background:var(--panel)}
+th{font-family:ui-monospace,Consolas,monospace;font-size:11px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);
+  text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);
+  white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right;font-family:ui-monospace,Consolas,monospace;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11.5px;
+  font-family:ui-monospace,Consolas,monospace;letter-spacing:.05em;
+  font-weight:600;white-space:nowrap}
+.pill.pass{color:var(--pass);background:var(--pass-bg)}
+.pill.fail{color:var(--fail);background:var(--fail-bg)}
+.pill.wait{color:var(--wait);background:var(--wait-bg)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:10px;margin-top:6px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:6px;
+  padding:12px 14px}
+.tile .v{font-family:ui-monospace,Consolas,monospace;font-size:22px;
+  font-weight:650;font-variant-numeric:tabular-nums}
+.tile .k{color:var(--ink2);font-size:12px;margin-top:2px;line-height:1.35}
+.tile .v.pos{color:var(--pos)} .tile .v.neg{color:var(--neg)}
+.verdict-row td:first-child{font-weight:600}
+.meaning{color:var(--ink2);font-size:12.5px}
+.cell{position:relative}
+.bars{display:flex;align-items:flex-end;gap:14px;padding:18px 16px 6px;
+  background:var(--panel);border:1px solid var(--line);border-radius:6px;
+  overflow-x:auto}
+.bargrp{display:flex;flex-direction:column;align-items:center;gap:5px;
+  min-width:56px}
+.barval{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;
+  font-variant-numeric:tabular-nums;color:var(--ink2)}
+.barstem{width:26px;border-radius:3px 3px 0 0}
+.barlbl{font-family:ui-monospace,Consolas,monospace;font-size:11px;
+  color:var(--ink2)}
+.barn{font-size:10px;color:var(--ink3)}
+.callout{border:1px solid var(--line);border-left:3px solid var(--neg);
+  background:var(--panel);border-radius:4px;padding:12px 16px;
+  font-size:13.5px;margin-top:12px;max-width:100%}
+.callout.info{border-left-color:var(--accent)}
+.foot{margin-top:44px;border-top:1px solid var(--line);padding-top:16px;
+  color:var(--ink2);font-size:12.5px;max-width:78ch}
+.foot ul{margin:8px 0 0;padding-left:18px}
+.foot li{margin-bottom:5px}
+@media (prefers-reduced-motion: no-preference){
+  .tile,.pill{transition:background .15s}
+}
+</style>
+<div class="wrap">
+<header>
+ <h1>Listing Validator</h1>
+ <span class="sub">Binance listing-event verdict engine · read-only ·
+ no orders, no keys, no capital</span>
+ <span class="stamp mono">data through 2026-06-12 · generated 2026-07-04 10:07 UTC</span>
+</header>
+
+<div class="eyebrow">Verdict ledger</div>
+<div class="scroll"><table>
+<tr><th>hypothesis</th><th>verdict</th><th>what it means</th></tr>
+
+<tr class="verdict-row"><td>H-B · fade the listing (spot signal)</td>
+ <td><span class="pill pass">REAL EDGE</span></td>
+ <td class="meaning">Listings dump after the first-hour pump. All six gauntlet
+ stages passed; confidence <b>marginal</b>. Spot-actionable form: do not buy
+ listings.</td></tr>
+<tr class="verdict-row"><td>H-B · short side on futures (D3)</td>
+ <td><span class="pill pass">REAL EDGE</span></td>
+ <td class="meaning">positive net-of-funding expectancy, PSR and MinTRL cleared. Funding modeled from actual
+ archive rates; sizing is existential (uncapped squeeze tail).</td></tr>
+<tr class="verdict-row"><td>H-C · pre-listing drift</td>
+ <td><span class="pill wait">NOT TESTED</span></td>
+ <td class="meaning">Needs off-Binance price history — tokens do not trade on
+ Binance before listing.</td></tr>
+<tr class="verdict-row"><td>H-A · accumulation predicts listing</td>
+ <td><span class="pill wait">NOT TESTED</span></td>
+ <td class="meaning">Requires a never-listed control group (hard block 8);
+ tested last by design.</td></tr>
+</table></div>
+
+<div class="eyebrow">What listings actually do — 429 events,
+2019-09-06 → 2026-06-12</div>
+
+<div class="tiles">
+ <div class="tile"><div class="v">75%</div>
+  <div class="k">of listings peak within the first 24 hours</div></div>
+ <div class="tile"><div class="v">66%</div>
+  <div class="k">median max drawdown inside 14 days</div></div>
+ <div class="tile"><div class="v">42%</div>
+  <div class="k">trade below their first-hour price 14 days later</div></div>
+ <div class="tile"><div class="v pos">+14.70%</div>
+  <div class="k">net short return per event, best cell +1h|14d
+  (fees + slippage in)</div></div>
+ <div class="tile"><div class="v">413</div>
+  <div class="k">events behind the verdict (97 now-dead tokens
+  kept — survivorship-complete)</div></div>
+</div>
+
+<div class="eyebrow">The gauntlet — six ways to kill a ghost</div>
+<div class="scroll"><table>
+<tr><th>stage</th><th>result</th><th>key statistic</th></tr>
+<tr><td class="mono">S1 in-sample sanity</td><td><span class="pill pass">PASS</span></td><td class="mono" style="font-size:12px">N=426; train cells with mean&gt;0: 16/24; best train SR=0.209 (+1h|14d)</td></tr><tr><td class="mono">S2 walk-forward</td><td><span class="pill pass">PASS</span></td><td class="mono" style="font-size:12px">OOS SR=0.202 vs train SR=0.323 (n=329, 3/4 folds positive)</td></tr><tr><td class="mono">S3 deflated Sharpe</td><td><span class="pill pass">PASS</span></td><td class="mono" style="font-size:12px">DSR=0.986 vs null-calibrated hurdle SR*=0.130 over 28 trials (need &gt;= 0.95); best cell +1h|14d SR=0.293; Bonferroni x28 p=0.0012 (dependence-free cross-check); paper plug-in variant: SR*=0.626 -&gt; DSR=0.000 (disclosed, not governing — see docs/DECISIONS.md)</td></tr><tr><td class="mono">S4 PBO (CSCV)</td><td><span class="pill pass">PASS</span></td><td class="mono" style="font-size:12px">PBO=0.052 over 924 CSCV splits (need &lt;= 0.5; reference CSCV is unpurged, so overlapping 14d windows at block edges bias PBO slightly LOW — a pass near the threshold would not be trustworthy)</td></tr><tr><td class="mono">S5 friction</td><td><span class="pill pass">PASS</span></td><td class="mono" style="font-size:12px">net mean=14.70%/event vs gross 15.44% (friction eats 0.74 pp)</td></tr><tr><td class="mono">S6 MinTRL</td><td><span class="pill pass">PASS</span></td><td class="mono" style="font-size:12px">have n=413 events, need &gt;= 73 for 95% confidence</td></tr>
+</table></div>
+
+<div class="eyebrow">The full grid — every entry × hold combination (nothing cherry-picked)</div>
+
+<div class="scroll"><table>
+<tr><th>short entry ↓ · hold →</th><th class="num">1h</th><th class="num">4h</th><th class="num">24h</th><th class="num">3d</th><th class="num">7d</th><th class="num">14d</th></tr><tr><td class="mono">at open (the trap)</td><td class="num cell" style="background:color-mix(in srgb, var(--neg-tint) 30%, transparent)" title="open entry, 1h hold — n=421, mean -1128.28%, median -126.30%, win 8%, SR -0.341">-1128.3%</td><td class="num cell" style="background:color-mix(in srgb, var(--neg-tint) 30%, transparent)" title="open entry, 4h hold — n=421, mean -1196.82%, median -121.23%, win 10%, SR -0.283">-1196.8%</td><td class="num cell" style="background:color-mix(in srgb, var(--neg-tint) 30%, transparent)" title="open entry, 24h hold — n=421, mean -1122.36%, median -100.64%, win 11%, SR -0.321">-1122.4%</td><td class="num cell" style="background:color-mix(in srgb, var(--neg-tint) 30%, transparent)" title="open entry, 3d hold — n=421, mean -1058.22%, median -78.40%, win 17%, SR -0.335">-1058.2%</td><td class="num cell" style="background:color-mix(in srgb, var(--neg-tint) 30%, transparent)" title="open entry, 7d hold — n=421, mean -948.97%, median -79.50%, win 21%, SR -0.364">-949.0%</td><td class="num cell" style="background:color-mix(in srgb, var(--neg-tint) 30%, transparent)" title="open entry, 14d hold — n=421, mean -932.12%, median -64.81%, win 23%, SR -0.341">-932.1%</td></tr><tr><td class="mono">+1h after open</td><td class="num cell" style="background:color-mix(in srgb, var(--neg-tint) 1%, transparent)" title="+1h entry, 1h hold — n=413, mean -0.33%, median +0.38%, win 53%, SR -0.034">-0.3%</td><td class="num cell" style="background:color-mix(in srgb, var(--pos-tint) 1%, transparent)" title="+1h entry, 4h hold — n=413, mean +0.93%, median +2.41%, win 60%, SR 0.061">+0.9%</td><td class="num cell" style="background:color-mix(in srgb, var(--pos-tint) 7%, transparent)" title="+1h entry, 24h hold — n=413, mean +4.74%, median +7.37%, win 68%, SR 0.192">+4.7%</td><td class="num cell" style="background:color-mix(in srgb, var(--pos-tint) 12%, transparent)" title="+1h entry, 3d hold — n=413, mean +8.13%, median +14.56%, win 74%, SR 0.170">+8.1%</td><td class="num cell" style="background:color-mix(in srgb, var(--pos-tint) 17%, transparent)" title="+1h entry, 7d hold — n=413, mean +11.08%, median +20.00%, win 75%, SR 0.239">+11.1%</td><td class="num cell" style="background:color-mix(in srgb, var(--pos-tint) 22%, transparent)" title="+1h entry, 14d hold — n=413, mean +14.70%, median +25.29%, win 76%, SR 0.293">+14.7%</td></tr><tr><td class="mono">+4h after open</td><td class="num cell" style="background:color-mix(in srgb, var(--neg-tint) 1%, transparent)" title="+4h entry, 1h hold — n=393, mean -0.46%, median +0.18%, win 52%, SR -0.063">-0.5%</td><td class="num cell" style="background:color-mix(in srgb, var(--pos-tint) 2%, transparent)" title="+4h entry, 4h hold — n=393, mean +1.11%, median +1.87%, win 60%, SR 0.094">+1.1%</td><td class="num cell" style="background:color-mix(in srgb, var(--pos-tint) 6%, transparent)" title="+4h entry, 24h hold — n=393, mean +4.30%, median +7.02%, win 70%, SR 0.190">+4.3%</td><td class="num cell" style="background:color-mix(in srgb, var(--pos-tint) 11%, transparent)" title="+4h entry, 3d hold — n=393, mean +7.19%, median +13.41%, win 76%, SR 0.171">+7.2%</td><td class="num cell" style="background:color-mix(in srgb, var(--pos-tint) 16%, transparent)" title="+4h entry, 7d hold — n=393, mean +10.46%, median +18.79%, win 74%, SR 0.236">+10.5%</td><td class="num cell" style="background:color-mix(in srgb, var(--pos-tint) 20%, transparent)" title="+4h entry, 14d hold — n=393, mean +13.32%, median +24.88%, win 72%, SR 0.261">+13.3%</td></tr><tr><td class="mono">+24h after open</td><td class="num cell" style="background:color-mix(in srgb, var(--pos-tint) 1%, transparent)" title="+24h entry, 1h hold — n=381, mean +0.43%, median +0.39%, win 56%, SR 0.095">+0.4%</td><td class="num cell" style="background:color-mix(in srgb, var(--pos-tint) 2%, transparent)" title="+24h entry, 4h hold — n=381, mean +1.37%, median +1.98%, win 67%, SR 0.141">+1.4%</td><td class="num cell" style="background:color-mix(in srgb, var(--pos-tint) 5%, transparent)" title="+24h entry, 24h hold — n=381, mean +3.59%, median +6.85%, win 73%, SR 0.160">+3.6%</td><td class="num cell" style="background:color-mix(in srgb, var(--pos-tint) 7%, transparent)" title="+24h entry, 3d hold — n=381, mean +4.89%, median +9.39%, win 73%, SR 0.135">+4.9%</td><td class="num cell" style="background:color-mix(in srgb, var(--pos-tint) 13%, transparent)" title="+24h entry, 7d hold — n=381, mean +8.60%, median +16.82%, win 73%, SR 0.204">+8.6%</td><td class="num cell" style="background:color-mix(in srgb, var(--pos-tint) 17%, transparent)" title="+24h entry, 14d hold — n=381, mean +11.57%, median +21.12%, win 74%, SR 0.244">+11.6%</td></tr>
+</table></div>
+<p class="note">Mean net short-side return per event (positive = the fade
+wins). The <b>open row is the trap</b>: shorting the listing minute is ruinous
+because the first-hour pump runs you over — the edge only exists after it.
+Hover any cell for n / median / win rate / Sharpe.</p>
+
+<div class="eyebrow">Regime check — does the edge live in one era?</div>
+
+<div class="bars">
+<div class="bargrp" title="2019: n=11, mean +21.51%, win 91%">
+ <div class="barval">+21.5%</div>
+ <div class="barstem" style="height:107px;background:var(--pos)"></div>
+ <div class="barlbl">2019</div><div class="barn mono">n=11</div>
+</div>
+<div class="bargrp" title="2020: n=61, mean +18.36%, win 79%">
+ <div class="barval">+18.4%</div>
+ <div class="barstem" style="height:91px;background:var(--pos)"></div>
+ <div class="barlbl">2020</div><div class="barn mono">n=61</div>
+</div>
+<div class="bargrp" title="2021: n=95, mean +14.49%, win 74%">
+ <div class="barval">+14.5%</div>
+ <div class="barstem" style="height:72px;background:var(--pos)"></div>
+ <div class="barlbl">2021</div><div class="barn mono">n=95</div>
+</div>
+<div class="bargrp" title="2022: n=33, mean +11.78%, win 82%">
+ <div class="barval">+11.8%</div>
+ <div class="barstem" style="height:58px;background:var(--pos)"></div>
+ <div class="barlbl">2022</div><div class="barn mono">n=33</div>
+</div>
+<div class="bargrp" title="2023: n=32, mean +4.12%, win 69%">
+ <div class="barval">+4.1%</div>
+ <div class="barstem" style="height:20px;background:var(--pos)"></div>
+ <div class="barlbl">2023</div><div class="barn mono">n=32</div>
+</div>
+<div class="bargrp" title="2024: n=62, mean +3.03%, win 66%">
+ <div class="barval">+3.0%</div>
+ <div class="barstem" style="height:15px;background:var(--pos)"></div>
+ <div class="barlbl">2024</div><div class="barn mono">n=62</div>
+</div>
+<div class="bargrp" title="2025: n=97, mean +24.20%, win 82%">
+ <div class="barval">+24.2%</div>
+ <div class="barstem" style="height:120px;background:var(--pos)"></div>
+ <div class="barlbl">2025</div><div class="barn mono">n=97</div>
+</div>
+<div class="bargrp" title="2026: n=22, mean +12.94%, win 77%">
+ <div class="barval">+12.9%</div>
+ <div class="barstem" style="height:64px;background:var(--pos)"></div>
+ <div class="barlbl">2026</div><div class="barn mono">n=22</div>
+</div></div>
+<p class="note">Net short return per event, cell +1h|14d, by
+listing year. Positive every year — but 2023–24 was a soft regime; size
+expectations to the lean years, not the fat ones.</p>
+
+
+<div class="eyebrow">Short-side execution — USDⓈ-M futures, funding included (D3)</div>
+<div class="tiles">
+ <div class="tile"><div class="v pos">+13.23%</div>
+  <div class="k">F1: short perp at spot+1h, hold 14d — net of fees, fills
+  AND funding (n=127, win 76%)</div></div>
+ <div class="tile"><div class="v neg">-4.98%</div>
+  <div class="k">avg funding cost per event — negative for the short in
+  71% of events</div></div>
+ <div class="tile"><div class="v">127/413</div>
+  <div class="k">listings with a day-one perp — you can only short about 1 in 3</div></div>
+ <div class="tile"><div class="v">0.9916</div>
+  <div class="k">PSR vs 0 (pre-registered confirmation; pessimistic
+  re-deflation 0.822 — disclosed)</div></div>
+ <div class="tile"><div class="v">+8.06%</div>
+  <div class="k">F2 exhibit: enter when the perp launches (≤7d) —
+  late entry misses the dump (n=212)</div></div>
+</div>
+<div class="callout"><b>Squeeze tail:</b> worst five events
+<span class="mono">-236%&nbsp;·&nbsp;-140%&nbsp;·&nbsp;-138%&nbsp;·&nbsp;-95%&nbsp;·&nbsp;-92%</span>
+of stake. Losses are not capped at −100% in this model. Position sizing is the
+difference between this edge and ruin.</div>
+<div class="callout info"><b>Coverage bias, disclosed:</b> shortable listings
+fade harder on spot (+19.25%) than unshortable ones
+(+12.69%) — the +13% is a property of the shortable
+subset, not of all listings.</div>
+
+<div class="eyebrow">Buy-the-dip exhibit — tested and dead</div>
+<div class="scroll"><table>
+<tr><th>pre-declared config</th><th class="num">n</th>
+<th class="num">mean (long)</th><th class="num">win</th></tr>
+<tr><td class="mono">rev_24h_dd40_7d</td><td class="num">152</td><td class="num">-16.90%</td><td class="num">18%</td></tr><tr><td class="mono">rev_24h_dd60_7d</td><td class="num">63</td><td class="num">-20.72%</td><td class="num">19%</td></tr><tr><td class="mono">rev_72h_dd40_7d</td><td class="num">206</td><td class="num">-10.43%</td><td class="num">27%</td></tr><tr><td class="mono">rev_72h_dd60_7d</td><td class="num">88</td><td class="num">-15.43%</td><td class="num">23%</td></tr>
+</table></div>
+<p class="note">All four pre-declared post-dump buy configs lose money net.
+Buying the crash is just buying the dump earlier.</p>
+
+<div class="eyebrow">Forward paper book — the rule graded on data it has never seen (D4)</div>
+<div class="scroll"><table>
+<tr><th>listing</th><th>date</th><th>perp</th><th>status</th>
+<th class="num">price leg</th><th class="num">funding</th>
+<th class="num">total</th><th class="num">spot fade</th></tr>
+<tr><td class="mono">REUSDT</td><td class="mono">2026-06-18</td><td class="mono">REUSDT</td><td><span class="pill wait">CLOSED_PRICE</span></td><td class="num">-20.13%</td><td class="num">-29.63%</td><td class="num">–</td><td class="num">-20.12%</td></tr><tr><td class="mono">AMDBUSDT</td><td class="mono">2026-06-23</td><td class="mono">–</td><td><span class="pill fail">EXCLUDED_TOKENIZED_EQUITY</span></td><td class="num">–</td><td class="num">–</td><td class="num">–</td><td class="num">–</td></tr><tr><td class="mono">EWYBUSDT</td><td class="mono">2026-06-23</td><td class="mono">–</td><td><span class="pill fail">EXCLUDED_TOKENIZED_EQUITY</span></td><td class="num">–</td><td class="num">–</td><td class="num">–</td><td class="num">–</td></tr><tr><td class="mono">INTCBUSDT</td><td class="mono">2026-06-23</td><td class="mono">–</td><td><span class="pill fail">EXCLUDED_TOKENIZED_EQUITY</span></td><td class="num">–</td><td class="num">–</td><td class="num">–</td><td class="num">–</td></tr><tr><td class="mono">MSTRBUSDT</td><td class="mono">2026-06-23</td><td class="mono">–</td><td><span class="pill fail">EXCLUDED_TOKENIZED_EQUITY</span></td><td class="num">–</td><td class="num">–</td><td class="num">–</td><td class="num">–</td></tr><tr><td class="mono">LITEBUSDT</td><td class="mono">2026-06-30</td><td class="mono">–</td><td><span class="pill fail">EXCLUDED_TOKENIZED_EQUITY</span></td><td class="num">–</td><td class="num">–</td><td class="num">–</td><td class="num">–</td></tr><tr><td class="mono">METABUSDT</td><td class="mono">2026-06-30</td><td class="mono">–</td><td><span class="pill fail">EXCLUDED_TOKENIZED_EQUITY</span></td><td class="num">–</td><td class="num">–</td><td class="num">–</td><td class="num">–</td></tr><tr><td class="mono">MSFTBUSDT</td><td class="mono">2026-06-30</td><td class="mono">–</td><td><span class="pill fail">EXCLUDED_TOKENIZED_EQUITY</span></td><td class="num">–</td><td class="num">–</td><td class="num">–</td><td class="num">–</td></tr><tr><td class="mono">PLTRBUSDT</td><td class="mono">2026-06-30</td><td class="mono">–</td><td><span class="pill fail">EXCLUDED_TOKENIZED_EQUITY</span></td><td class="num">–</td><td class="num">–</td><td class="num">–</td><td class="num">–</td></tr><tr><td class="mono">QQQBUSDT</td><td class="mono">2026-06-30</td><td class="mono">–</td><td><span class="pill fail">EXCLUDED_TOKENIZED_EQUITY</span></td><td class="num">–</td><td class="num">–</td><td class="num">–</td><td class="num">–</td></tr><tr><td class="mono">GRAMUSDT</td><td class="mono">2026-07-02</td><td class="mono">–</td><td><span class="pill fail">UNTRADEABLE</span></td><td class="num">–</td><td class="num">–</td><td class="num">–</td><td class="num">–</td></tr>
+</table></div>
+<p class="note">Frozen rule, frozen thresholds — forward results are
+accounting only and can never be used to re-tune (one-way mirror,
+docs/DECISIONS.md D4). Backtest baseline for settled trades:
++13.23% per event. CLOSED_PRICE means the price legs are final but
+funding is still partial — Binance publishes funding in monthly files, so a
+position settles early in the month after it closes.</p>
+
+<div class="foot">
+<b>Honesty notes.</b>
+<ul>
+<li>Verdict confidence is <b>marginal</b>, not overwhelming: deflated Sharpe
+0.986 vs the 0.95 bar, one flat walk-forward fold (2023–24), and the
+pessimistic re-deflation of the futures leg fails at 0.822 (disclosed above).</li>
+<li>Not modeled: liquidation mechanics, borrow limits, exchange outages at
+listing minutes. Slippage is a model (range-scaled, capped adverse fills) —
+reality can be worse.</li>
+<li>A REAL verdict validates a <i>signal</i>, not a deployment. Everything
+here is read-only research output.</li>
+<li>Methodological rulings are frozen in docs/DECISIONS.md (D1–D4); the full
+stage-by-stage numbers are in reports/verdict_report.txt.</li>
+</ul>
+</div>
+</div>
