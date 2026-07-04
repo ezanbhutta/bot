@@ -12,6 +12,8 @@ Archive lag is respected honestly: perp 1m day-zips appear ~T+1, monthly
 funding files land after month-end. A position's price legs close first
 (CLOSED_PRICE) and it only SETTLES when funding is complete.
 """
+import json
+import os
 import time
 from datetime import datetime, timezone
 
@@ -264,6 +266,67 @@ def refresh(conn, progress=print):
             _advance(conn, sess, row, progress)
         except Exception as e:  # noqa: BLE001
             progress(f"[track] {row[0]}: advance error {type(e).__name__}: {e}")
+
+
+# ---------------------------------------------------------------------------
+# State persistence (git-committed, so a fresh clone resumes the book)
+# ---------------------------------------------------------------------------
+
+STATE_PATH = "state/paper_state.json"
+
+_PT_COLS = ("symbol", "base_asset", "first_trade_time", "perp_symbol",
+            "status", "entry_time", "exit_time", "fill_return",
+            "funding_return", "funding_complete", "total_return",
+            "spot_return", "note", "created_at", "updated_at")
+
+
+def export_state(conn, path=STATE_PATH):
+    state = {
+        "paper_trades": [
+            dict(zip(_PT_COLS, r)) for r in conn.execute(
+                f"SELECT {','.join(_PT_COLS)} FROM paper_trades")
+        ],
+        "symbols": conn.execute(
+            "SELECT symbol, base_asset, quote_asset, first_kline_ms "
+            "FROM symbols WHERE first_kline_ms IS NOT NULL").fetchall(),
+        "perp_meta": conn.execute(
+            "SELECT spot_symbol, perp_symbol, first_date, last_date "
+            "FROM perp_meta").fetchall(),
+    }
+    d = os.path.dirname(path)
+    if d:
+        os.makedirs(d, exist_ok=True)
+    with open(path, "w") as fh:
+        json.dump(state, fh, indent=0, sort_keys=True)
+
+
+def import_state(conn, path=STATE_PATH):
+    """Seed an empty/older DB from the committed state. INSERT OR IGNORE:
+    live rows in the local DB always win over the imported snapshot."""
+    if not os.path.exists(path):
+        return 0
+    with open(path) as fh:
+        state = json.load(fh)
+    n = 0
+    for row in state.get("paper_trades", []):
+        conn.execute(
+            f"INSERT OR IGNORE INTO paper_trades ({','.join(_PT_COLS)}) "
+            f"VALUES ({','.join('?' * len(_PT_COLS))})",
+            tuple(row.get(c) for c in _PT_COLS))
+        n += 1
+    now = _now_ms()
+    for sym, base, quote, fk in state.get("symbols", []):
+        conn.execute(
+            "INSERT OR IGNORE INTO symbols (symbol, base_asset, quote_asset, "
+            "status, in_exchange_info, in_archive, first_kline_ms, fetched_at) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (sym, base, quote, "IMPORTED", 0, 0, fk, now))
+    for spot, perp, fd, ld in state.get("perp_meta", []):
+        conn.execute(
+            "INSERT OR IGNORE INTO perp_meta VALUES (?,?,?,?,?)",
+            (spot, perp, fd, ld, now))
+    conn.commit()
+    return n
 
 
 # ---------------------------------------------------------------------------

@@ -48,8 +48,12 @@ def cmd_ingest_futures(conn):
 
 def cmd_track(conn):
     print("[track] forward paper-test refresh (docs/DECISIONS.md D4)")
+    n = paper_tracker.import_state(conn)
+    if n:
+        print(f"[track] seeded {n} paper-book rows from {paper_tracker.STATE_PATH}")
     paper_tracker.refresh(conn)
     out = paper_tracker.report(conn)
+    paper_tracker.export_state(conn)
     print()
     print(out)
     with open("data/paper_book.txt", "w") as fh:
