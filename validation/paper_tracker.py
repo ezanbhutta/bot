@@ -50,6 +50,23 @@ def _fmt(ms):
 def _discover(conn, sess, progress):
     """New forward listings -> paper_trades rows (status DETECTED)."""
     fwd_start = _fwd_start_ms()
+
+    # Universe hygiene: if the exclusion set has grown since a row was
+    # inserted (e.g. a new tokenized-equity batch was identified), reclassify
+    # any not-yet-excluded rows now. Keeps the book honest without ever
+    # touching a REAL/OPEN/settled position's numbers.
+    excl = tuple(config.TOKENIZED_EQUITY_BASES | config.STABLE_OR_PEGGED_BASES)
+    if excl:
+        ph = ",".join("?" * len(excl))
+        reclassed = conn.execute(
+            f"UPDATE paper_trades SET status='EXCLUDED_TOKENIZED_EQUITY', "
+            f"updated_at=? WHERE status IN ('DETECTED') AND base_asset IN ({ph})",
+            (_now_ms(), *excl)).rowcount
+        conn.commit()
+        if reclassed:
+            progress(f"[track] reclassified {reclassed} row(s) as excluded "
+                     f"(exclusion set grew)")
+
     known = {s for (s,) in conn.execute("SELECT symbol FROM paper_trades")}
     ei = market_data.get_exchange_info(sess)
 
@@ -76,11 +93,17 @@ def _discover(conn, sess, progress):
         cands[sym] = b
 
     added = 0
+    lookup_errors = []
     now = _now_ms()
     for sym, base in sorted(cands.items()):
         try:
             ft = market_data.first_kline_ms(sess, sym)
-        except Exception:
+        except Exception as e:  # noqa: BLE001 — surfaced, not swallowed
+            # A transient lookup failure must NOT silently drop a candidate:
+            # the symbol stays unknown so the next run retries it, but we log
+            # it so a persistently-erroring genuine listing can never vanish
+            # without a trace (detection-integrity, docs/DECISIONS.md D4).
+            lookup_errors.append((sym, f"{type(e).__name__}: {e}"))
             continue
         if ft is None or ft < fwd_start:
             continue
@@ -104,6 +127,10 @@ def _discover(conn, sess, progress):
     conn.commit()
     if added:
         progress(f"[track] {added} new forward listing(s) detected")
+    if lookup_errors:
+        storage.log_step(conn, "discover_lookup_errors", str(lookup_errors))
+        progress(f"[track] {len(lookup_errors)} candidate lookup error(s) "
+                 f"(will retry next run): {lookup_errors[:5]}")
     return added
 
 

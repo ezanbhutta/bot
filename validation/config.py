@@ -72,6 +72,8 @@ TOKENIZED_EQUITY_BASES = {
     "AMDB", "EWYB", "INTCB", "MSTRB", "LITEB", "METAB", "MSFTB", "PLTRB",
     "QQQB", "TSLAB", "AAPLB", "NVDAB", "GOOGLB", "AMZNB", "SPYB", "COINB",
     "HOODB", "CRCLB",
+    # 2026-07-07 xStock batch (all listed 13:30 UTC = US market open):
+    "CBRSB", "DRAMB", "GLWB", "NBISB", "QCOMB", "SOXLB", "WDCB",
 }
 
 # Announcement window: an announcement matches an event if it falls in
