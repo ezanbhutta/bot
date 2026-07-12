@@ -151,6 +151,24 @@ FUT_HOLD_MS = 336 * H        # 14d hold, fixed by the validated spot cell
 FUT_ENTRY_OFFSET_MS = 1 * H  # spot_t0 + 1h, fixed by the validated spot cell
 FUT_F2_MAX_DELAY_MS = 7 * 24 * H  # F2: perp must arrive within 7d of listing
 
+# --- Paper-trading bot (validation/paper_bot.py) ---
+# PAPER ONLY. No live orders, no keys, no capital (PROJECT_BRIEF fence).
+# These are execution/sizing choices, NOT the entry rule (which is frozen F1).
+BOT_ACCOUNT_USD = 1000.0        # pretend account the paper bot sizes against
+# A no-stop 14d short can lose more than its margin (worst backtest event
+# ~ -236%). Size so the WORST plausible single loss stays within the
+# per-trade account cap — survival first.
+BOT_WORST_CASE_LOSS_FRAC = 2.5  # assume a bad trade can cost 250% of margin
+BOT_MAX_ACCOUNT_LOSS_PER_TRADE = 0.02  # never risk more than 2% of the account
+# Funding guard (the "not greedy, stay safe" instinct as a hard pre-trade
+# rule). LABELLED as an un-validated execution overlay — it is NOT part of
+# the F1 verdict; shown so its effect is visible. Decided at entry using
+# ONLY the funding rate known at entry (no lookahead).
+BOT_FUNDING_GUARD = True
+BOT_FUNDING_MAX_PROJECTED = 0.15  # skip if projected 14d funding cost to the
+                                  # short exceeds 15% of notional
+BOT_FUNDING_INTERVALS_14D = 42    # 14d / 8h funding periods
+
 # --- Forward paper-test (docs/DECISIONS.md D4) ---
 # Frozen: first UTC day after the last backtest event. Listings at/after
 # this instant are forward events permanently.

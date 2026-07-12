@@ -19,8 +19,18 @@ python listing_validator.py ingest-futures  # perp klines + funding rates (D3 sh
 python listing_validator.py validate        # gauntlet + verdict table (also saved to data/verdict_report.txt)
 python listing_validator.py track           # forward paper-test: run any time (daily/weekly), it
                                             # catches up statelessly from public archives (D4)
+python listing_validator.py bot             # paper-trading bot: step-by-step decision log for
+                                            # every forward listing (PAPER ONLY — no orders/keys/capital)
+python listing_validator.py bot --symbol REUSDT   # trace one listing
 python -m pytest tests/                     # stats-machinery + anti-leakage tests
 ```
+
+The `bot` command reproduces, step by step, exactly what an execution bot
+*would* do under the frozen F1 rule — detect, universe-filter, perp-check,
+funding-guard, size (survival-first), place a **paper** order, hold 14d,
+score the realized P&L including funding. It never places a live order,
+never holds a key, never touches capital. It is the whole machine minus the
+final click, and it doubles as a transparent forward test.
 
 ## Data sources (all public, read-only, keyless)
 

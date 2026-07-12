@@ -16,7 +16,7 @@ import argparse
 import sys
 
 from validation import (announcements, config, dashboard, events, futures_exec,
-                        gauntlet, paper_tracker, report, storage)
+                        gauntlet, paper_bot, paper_tracker, report, storage)
 
 
 def cmd_ingest(conn):
@@ -57,6 +57,15 @@ def cmd_track(conn):
     print()
     print(out)
     with open("data/paper_book.txt", "w") as fh:
+        fh.write(out + "\n")
+    return 0
+
+
+def cmd_bot(conn, only_symbol=None):
+    traces = paper_bot.run(conn, only_symbol=only_symbol)
+    out = paper_bot.render(traces)
+    print(out)
+    with open("data/paper_bot_log.txt", "w") as fh:
         fh.write(out + "\n")
     return 0
 
@@ -113,8 +122,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("command",
                     choices=["ingest", "ingest-futures", "validate", "track",
-                             "dashboard", "all"])
+                             "dashboard", "bot", "all"])
     ap.add_argument("--db", default=config.DB_PATH)
+    ap.add_argument("--symbol", default=None,
+                    help="bot: trace only this symbol (e.g. REUSDT)")
     args = ap.parse_args()
     conn = storage.connect(args.db)
     try:
@@ -128,6 +139,8 @@ def main():
             return rc
         if args.command == "dashboard":
             return cmd_dashboard(conn)
+        if args.command == "bot":
+            return cmd_bot(conn, only_symbol=args.symbol)
         if args.command in ("validate", "all"):
             return cmd_validate(conn) or 0
         return 0
