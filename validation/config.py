@@ -74,6 +74,8 @@ TOKENIZED_EQUITY_BASES = {
     "HOODB", "CRCLB",
     # 2026-07-07 xStock batch (all listed 13:30 UTC = US market open):
     "CBRSB", "DRAMB", "GLWB", "NBISB", "QCOMB", "SOXLB", "WDCB",
+    # 2026-07-13 xStock (SK Hynix, 13:30 UTC, no perp):
+    "SKHYB",
 }
 
 # Announcement window: an announcement matches an event if it falls in
