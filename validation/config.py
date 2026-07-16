@@ -76,6 +76,9 @@ TOKENIZED_EQUITY_BASES = {
     "CBRSB", "DRAMB", "GLWB", "NBISB", "QCOMB", "SOXLB", "WDCB",
     # 2026-07-13 xStock (SK Hynix, 13:30 UTC, no perp):
     "SKHYB",
+    # 2026-07-15 xStock batch (13:30 UTC, no perps): Applied Optoelectronics,
+    # Arm, Broadcom, Alibaba, IBM, Marvell, Nokia, Rocket Lab, TSMC:
+    "AAOIB", "ARMB", "AVGOB", "BABAB", "IBMB", "MRVLB", "NOKB", "RKLBB", "TSMB",
 }
 
 # Announcement window: an announcement matches an event if it falls in
