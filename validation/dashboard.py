@@ -91,13 +91,30 @@ def gather(conn):
             "fill_return, funding_return, total_return, spot_return "
             "FROM paper_trades ORDER BY first_trade_time")
     ]
+    # Settled-trade aggregate + de-polluted spot-fade monitor, so the forward
+    # panel states its own bottom line instead of leaving the reader to eyeball
+    # rows. Tokenized equities are out of the universe (EXCLUDED*), so they
+    # never enter either statistic.
+    settled = [b["total"] for b in book if b["total"] is not None]
+    spot = [b["spot"] for b in book
+            if b["spot"] is not None and not b["status"].startswith("EXCLUDED")]
+    n_excl = sum(1 for b in book if b["status"].startswith("EXCLUDED"))
+    book_stats = {
+        "seen": len(book), "universe": len(book) - n_excl, "excluded": n_excl,
+        "n": len(settled),
+        "mean": float(np.mean(settled)) if settled else None,
+        "win": float(np.mean([x > 0 for x in settled])) if settled else None,
+        "spot_n": len(spot),
+        "spot_mean": float(np.mean(spot)) if spot else None,
+        "baseline": 0.1323,
+    }
 
     return {
         "generated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "summary": {"n": n, "lo": lo, "hi": hi, "with_ann": with_ann,
                     "delisted": delisted},
         "hb": hb, "fx": fx, "grid": grid, "regime": regime,
-        "reversion": rev_rows, "book": book,
+        "reversion": rev_rows, "book": book, "book_stats": book_stats,
     }
 
 
@@ -360,6 +377,7 @@ subset, not of all listings.</div>"""
             f'<td class="num">{win}</td></tr>')
 
     # --- forward book ---------------------------------------------------------
+    bs = d["book_stats"]
     book_rows = ""
     for b in d["book"]:
         status = b["status"]
@@ -427,12 +445,18 @@ Buying the crash is just buying the dump earlier.</p>
 <th class="num">total</th><th class="num">spot fade</th></tr>
 {book_rows}
 </table></div>
-<p class="note">Frozen rule, frozen thresholds — forward results are
-accounting only and can never be used to re-tune (one-way mirror,
-docs/DECISIONS.md D4). Backtest baseline for settled trades:
-{_f(0.1323)} per event. CLOSED_PRICE means the price legs are final but
-funding is still partial — Binance publishes funding in monthly files, so a
-position settles early in the month after it closes.</p>
+<p class="note"><b>Settled so far: n={bs['n']},
+mean {_f(bs['mean'])}, win {(bs['win'] or 0)*100:.0f}%</b> vs backtest baseline
+{_f(bs['baseline'])} / event — {bs['universe']} listings in the crypto
+universe, {bs['excluded']} excluded tokenized equities. Genuine-crypto
+spot-fade monitor: n={bs['spot_n']}, mean {_f(bs['spot_mean'])}. At this n the
+forward mean sits inside a very wide confidence band, so it neither confirms
+nor breaks the backtest — it is far too early to read either way.
+Frozen rule, frozen thresholds — forward results are accounting only and can
+never be used to re-tune (one-way mirror, docs/DECISIONS.md D4). CLOSED_PRICE
+means the price legs are final but funding is still partial — Binance publishes
+funding in monthly files, so a position settles early in the month after it
+closes.</p>
 
 <div class="foot">
 <b>Honesty notes.</b>

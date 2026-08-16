@@ -1,7 +1,7 @@
 FORWARD PAPER BOOK (D4; rule F1 frozen; accounting only — forward results never change the rule)
-  forward window starts 2026-06-13T00:00:00Z; 28 forward listings so far
+  forward window starts 2026-06-13T00:00:00Z; 58 listings seen — 3 in the crypto universe, 55 excluded tokenized equities
   symbol          listed (UTC)      perp            status        price leg  funding    total spot fade
-  REUSDT          2026-06-18 14:00  REUSDT          CLOSED_PRICE     -20.1%   -29.6%        -    -20.1%
+  REUSDT          2026-06-18 14:00  REUSDT          SETTLED          -20.1%   -31.1%   -51.2%    -20.1%
   AMDBUSDT        2026-06-23 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
   EWYBUSDT        2026-06-23 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
   INTCBUSDT       2026-06-23 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
@@ -11,7 +11,7 @@ FORWARD PAPER BOOK (D4; rule F1 frozen; accounting only — forward results neve
   MSFTBUSDT       2026-06-30 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
   PLTRBUSDT       2026-06-30 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
   QQQBUSDT        2026-06-30 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
-  GRAMUSDT        2026-07-02 08:00  -               UNTRADEABLE           -        -        -         -
+  GRAMUSDT        2026-07-02 08:00  -               UNTRADEABLE           -        -        -     +2.5%
   CBRSBUSDT       2026-07-07 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
   DRAMBUSDT       2026-07-07 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
   GLWBUSDT        2026-07-07 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
@@ -29,6 +29,38 @@ FORWARD PAPER BOOK (D4; rule F1 frozen; accounting only — forward results neve
   NOKBUSDT        2026-07-15 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
   RKLBBUSDT       2026-07-15 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
   TSMBUSDT        2026-07-15 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  AEROUSDT        2026-07-17 16:00  AEROUSDT        SETTLED          +14.1%    -0.7%   +13.4%    +13.9%
+  AXTIBUSDT       2026-07-22 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  CRWVBUSDT       2026-07-22 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  INTWBUSDT       2026-07-22 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  KORUBUSDT       2026-07-22 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -    +11.1%
+  MUUBUSDT        2026-07-22 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  MVLLBUSDT       2026-07-22 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  ORCLBUSDT       2026-07-22 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -    -13.5%
+  QNTBUSDT        2026-07-22 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  SNXXBUSDT       2026-07-22 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -    +32.0%
+  TQQQBUSDT       2026-07-22 13:30  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  AMATBUSDT       2026-07-29 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  BEBUSDT         2026-07-29 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  DELLBUSDT       2026-07-29 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  FLNCBUSDT       2026-07-29 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  GSBUSDT         2026-07-29 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  PYPLBUSDT       2026-07-29 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  SMHBUSDT        2026-07-29 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  SOXSBUSDT       2026-07-29 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  ALABBUSDT       2026-08-05 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  ASMLBUSDT       2026-08-05 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  ASTSBUSDT       2026-08-05 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  BMNRBUSDT       2026-08-05 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  COHRBUSDT       2026-08-05 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  CRDOBUSDT       2026-08-05 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  IRENBUSDT       2026-08-05 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  NFLXBUSDT       2026-08-05 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  SMCIBUSDT       2026-08-05 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  USARBUSDT       2026-08-05 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
+  GMEBUSDT        2026-08-12 12:00  -               EXCLUDED_TOKENIZED_EQUITY         -        -        -         -
 
-  no settled forward trades yet (positions need 14d + archive lag to close and settle)
-  signal monitor (spot fade, ALL forward events incl. untradeable): n=1 mean=-20.12% win=0%
+  settled forward trades: n=2  mean=-18.88%  win=50%
+  backtest baseline: mean=+13.23% (n=127, win 76%); 95% band for n=2: -48.7% .. +75.2%
+  consistency: CONSISTENT with backtest (underpowered until n >= ~64; standalone verdict requires its own MinTRL)
+  signal monitor (spot fade, ALL forward events incl. untradeable): n=3 mean=-1.25% win=67%

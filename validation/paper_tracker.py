@@ -58,9 +58,16 @@ def _discover(conn, sess, progress):
     excl = tuple(config.TOKENIZED_EQUITY_BASES | config.STABLE_OR_PEGGED_BASES)
     if excl:
         ph = ",".join("?" * len(excl))
+        # Also flip UNTRADEABLE rows: a stock token first seen before its base
+        # entered the exclusion set was booked as a no-perp UNTRADEABLE listing
+        # (e.g. a new bStock batch). Once identified it belongs OUT of the
+        # universe entirely, so it stops polluting the spot-fade signal monitor.
+        # Never matches a REAL/OPEN/settled position (their bases aren't in the
+        # tokenized set), so no traded number is ever touched.
         reclassed = conn.execute(
             f"UPDATE paper_trades SET status='EXCLUDED_TOKENIZED_EQUITY', "
-            f"updated_at=? WHERE status IN ('DETECTED') AND base_asset IN ({ph})",
+            f"updated_at=? WHERE status IN ('DETECTED','UNTRADEABLE') "
+            f"AND base_asset IN ({ph})",
             (_now_ms(), *excl)).rowcount
         conn.commit()
         if reclassed:
@@ -253,18 +260,27 @@ def _advance(conn, sess, row, progress):
                 "INSERT OR IGNORE INTO funding_rates VALUES (?,?,?)",
                 [(perp, ts, r) for ts, r in funding])
             conn.commit()
+        # Perp bars may be absent here if the row was already CLOSED_PRICE when
+        # the DB was rebuilt from the saved book state (klines are not part of
+        # the JSON snapshot, so a cold resume loses them). Re-fetch the entry
+        # window before using it — the OPEN/exit transitions do the same, so
+        # settlement stays resilient to a cold DB. Anchored to entry_ts, so the
+        # entry price is identical; no rule/friction/formula change.
+        _ensure_perp_bars(conn, sess, perp, entry_ts)
         marks = futures_exec._spot_marks(conn, sym)
         arr = futures_exec._load_perp_bars(conn, perp)
-        e_bar, e_ot = futures_exec._entry_bar(arr, entry_ts)
-        fund_ret, n_f = futures_exec._funding_return(
-            conn, perp, marks, e_bar[0], entry_time, exit_time)
-        latest = conn.execute(
-            "SELECT MAX(funding_time) FROM funding_rates WHERE symbol=?",
-            (perp,)).fetchone()[0] or 0
-        if latest >= exit_time - int(8.5 * H_MS):
-            fund_done = 1
-            total = fill_ret + fund_ret
-            status = "SETTLED"
+        e_bar, e_ot = (futures_exec._entry_bar(arr, entry_ts)
+                       if arr is not None else (None, None))
+        if e_bar is not None:
+            fund_ret, n_f = futures_exec._funding_return(
+                conn, perp, marks, e_bar[0], entry_time, exit_time)
+            latest = conn.execute(
+                "SELECT MAX(funding_time) FROM funding_rates WHERE symbol=?",
+                (perp,)).fetchone()[0] or 0
+            if latest >= exit_time - int(8.5 * H_MS):
+                fund_done = 1
+                total = fill_ret + fund_ret
+                status = "SETTLED"
 
     if spot_ret is None and now > exit_ts + DAY_MS:
         spot_ret = _spot_fade_return(conn, sym, t0)
@@ -365,11 +381,14 @@ def report(conn):
         "SELECT symbol, first_trade_time, perp_symbol, status, fill_return, "
         "funding_return, total_return, spot_return FROM paper_trades "
         "ORDER BY first_trade_time").fetchall()
+    n_excl = sum(1 for r in rows if str(r[3]).startswith("EXCLUDED"))
+    n_univ = len(rows) - n_excl
     lines = [
         "FORWARD PAPER BOOK (D4; rule F1 frozen; accounting only — forward "
         "results never change the rule)",
         f"  forward window starts {config.FORWARD_TEST_START_UTC}; "
-        f"{len(rows)} forward listings so far",
+        f"{len(rows)} listings seen — {n_univ} in the crypto universe, "
+        f"{n_excl} excluded tokenized equities",
         f"  {'symbol':<16}{'listed (UTC)':<18}{'perp':<16}{'status':<13}"
         f"{'price leg':>10}{'funding':>9}{'total':>9}{'spot fade':>10}",
     ]
@@ -382,7 +401,10 @@ def report(conn):
             f"{pct(fr):>10}{pct(fu):>9}{pct(tot):>9}{pct(sp):>10}")
         if tot is not None:
             settled.append(tot)
-        if sp is not None:
+        # Tokenized equities are out of the strategy's universe: never let a
+        # lingering spot_return (computed before the base was identified as a
+        # stock token) leak into the genuine-crypto spot-fade monitor.
+        if sp is not None and not status.startswith("EXCLUDED"):
             spot_all.append(sp)
     b = F1_BASELINE
     if settled:

@@ -79,6 +79,23 @@ TOKENIZED_EQUITY_BASES = {
     # 2026-07-15 xStock batch (13:30 UTC, no perps): Applied Optoelectronics,
     # Arm, Broadcom, Alibaba, IBM, Marvell, Nokia, Rocket Lab, TSMC:
     "AAOIB", "ARMB", "AVGOB", "BABAB", "IBMB", "MRVLB", "NOKB", "RKLBB", "TSMB",
+    # 2026-07-22 bStock batch (13:30 UTC, no perps): AXT, CoreWeave, INTW,
+    # Direxion S.Korea Bull 3x (KORU), Direxion MU Bull 2x (MUU), GraniteShares
+    # 2x MRVL (MVLL), Oracle, QNT bStock, Tradr 2x SNDK (SNXX), ProShares
+    # UltraPro QQQ 3x (TQQQ):
+    "AXTIB", "CRWVB", "INTWB", "KORUB", "MUUB", "MVLLB", "ORCLB", "QNTB",
+    "SNXXB", "TQQQB",
+    # 2026-07-29 bStock batch (12:00 UTC, no perps): Applied Materials, Bloom
+    # Energy (BE), Dell, Fluence, Goldman Sachs, PayPal, VanEck Semis (SMH),
+    # Direxion Semi Bear 3x (SOXS):
+    "AMATB", "BEB", "DELLB", "FLNCB", "GSB", "PYPLB", "SMHB", "SOXSB",
+    # 2026-08-05 bStock batch (12:00 UTC, no perps): Astera Labs, ASML, AST
+    # SpaceMobile, Bitmine, Coherent, Credo, Iris Energy, Netflix, Super Micro,
+    # USA Rare Earth:
+    "ALABB", "ASMLB", "ASTSB", "BMNRB", "COHRB", "CRDOB", "IRENB", "NFLXB",
+    "SMCIB", "USARB",
+    # 2026-08-12 bStock (12:00 UTC, no perp): GameStop:
+    "GMEB",
 }
 
 # Announcement window: an announcement matches an event if it falls in
